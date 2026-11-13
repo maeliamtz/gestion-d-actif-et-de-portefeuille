@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Appli GAP — Météo des marchés</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+:root { --font-anthropic-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --font-anthropic-serif: Georgia, "Times New Roman", serif;
+  --color-fg: #1f1f1d; --color-fg-muted: #6b6a66; --color-bg: #faf9f5; --color-panel: #ffffff; --color-border-line: #e5e3dc;
+  --color-ok: #2f7d4f; --color-warn: #b7791f; --color-bad: #c0392b;
+  --cds-font-size-caption: 13px; --cds-font-size-body: 15px; --cds-font-size-heading: 18px; --cds-font-size-title: 30px; --cds-font-weight-medium: 600;
+  --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 12px; --cds-gap-lg: 16px; --cds-gap-xl: 28px; --cds-pad-lg: 16px; --cds-radius: 10px;
+  --cds-chart-grid: #e5e3dc; --cds-chart-axis: #c9c6bc; --cds-chart-reference: #8a877d; --cds-chart-status-critical: #c0392b; --cds-text-secondary: #6b6a66;
+  --cds-surface-popover: #ffffff; --cds-border: #d9d6cc; --cds-shadow-popover: 0 4px 16px rgba(0,0,0,.12); --serie: #2f5fb3; }
+@media (prefers-color-scheme: dark) { :root { --color-fg: #ecebe6; --color-fg-muted: #a3a19a; --color-bg: #1c1c1a; --color-panel: #262624;
+  --color-border-line: #3a3936; --color-ok: #5cb87f; --color-warn: #e0a84a; --color-bad: #e36b5d; --cds-chart-grid: #3a3936; --cds-chart-axis: #55534e;
+  --cds-chart-reference: #8a877d; --cds-text-secondary: #a3a19a; --cds-surface-popover: #2f2f2c; --cds-border: #4a4945; --serie: #7aa2e8; } }
+body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-family: var(--font-anthropic-sans); font-size: var(--cds-font-size-body); }
+#dash-root { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+.dash-select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--color-border-line); background-color: var(--color-panel); color: var(--color-fg); }
+.maj { font-size: 13px; color: var(--color-fg-muted); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div id="dash-root">
+<script>
+/* Petit moteur qui remplace celui du tableau de bord Claude : charge les fichiers JSON et redessine la page. */
+(function () {
+  const SOURCES = ['historique', 'piliers', 'indicateurs', 'backtest', 'maj'];
+  const store = {}, calcs = {}, draws = {};
+  let params = {};
+  SOURCES.forEach((id) => (store[id] = {status: 'loading', data: []}));
+  const run = (id) => {
+    const c = calcs[id];
+    const ins = c.inputs.map((i) => store[i]);
+    if (ins.some((x) => x.status !== 'ok')) return {status: 'loading', data: null};
+    try { return {status: 'ok', data: c.fn(...ins.map((x) => x.data))}; } catch (e) { console.error(e); return {status: 'error', data: null}; }
+  };
+  const render = () => {
+    Object.keys(calcs).forEach((id) => (store[id] = run(id)));
+    for (const [name, fn] of Object.entries(draws))
+      document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => { try { fn(el); } catch (e) { console.error(name, e); } });
+  };
+  window.dash = {
+    data: (id) => store[id] || {status: 'missing', data: []},
+    calc: (id, def) => { calcs[id] = def; },
+    draw: (name, fn) => { draws[name] = fn; },
+    params: () => params,
+    setParams: (p) => { params = Object.assign({}, params, p); render(); },
+    colors: ['var(--serie)'],
+    onData: (fn) => fn(),
+  };
+  const start = () => {
+    render();
+    SOURCES.forEach((id) => fetch('data/' + id + '.json', {cache: 'no-cache'}).then((r) => r.json())
+      .then((j) => { store[id] = {status: 'ok', data: j.rows}; render(); })
+      .catch(() => { store[id] = {status: 'error', data: []}; render(); }));
+    let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(render, 150); });
+  };
+  window.addEventListener('DOMContentLoaded', start);
+})();
+</script>
+<style>
+.gap { font-family: var(--font-anthropic-sans); color: var(--color-fg); display: flex; flex-direction: column; gap: var(--cds-gap-xl); }
+.gap h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; }
+.gap h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0 0 var(--cds-gap-sm); }
+.gap .lead { margin: var(--cds-gap-xs) 0 0; color: var(--color-fg-muted); max-width: 60em; }
+.gap .muted { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.gap .card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); }
+.gap .hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--cds-gap-lg); }
+.gap .big { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 3rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.gap .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); border: 1px solid currentColor; }
+.gap .z-prudence { color: var(--color-bad); } .gap .z-neutre { color: var(--color-warn); } .gap .z-favorable { color: var(--color-ok); } .gap .z-na { color: var(--color-fg-muted); }
+.gap .grid6 { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--cds-gap-md); }
+.gap .pcard { display: flex; flex-direction: column; gap: var(--cds-gap-xs); border-top-width: 4px; }
+.gap .pcard .nom { font-weight: var(--cds-font-weight-medium); }
+.gap .pcard .score { font-family: var(--font-anthropic-serif); font-size: 2rem; font-variant-numeric: tabular-nums; }
+.gap .pcard.z-prudence { border-top-color: var(--color-bad); } .gap .pcard.z-neutre { border-top-color: var(--color-warn); }
+.gap .pcard.z-favorable { border-top-color: var(--color-ok); } .gap .pcard.z-na { border-top-color: var(--color-border-line); }
+.gap .pcard { color: var(--color-fg); }
+.gap .chartbox { position: relative; min-height: 300px; }
+.gap .tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); border-radius: var(--cds-radius); padding: 6px 10px; font-size: var(--cds-font-size-caption); white-space: nowrap; }
+.gap .axis text { fill: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); }
+.gap .axis path, .gap .axis line { stroke: var(--cds-chart-axis); }
+.gap .tablewrap { overflow-x: auto; }
+.gap table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.gap th, .gap td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--color-border-line); }
+.gap th { font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.gap td.num, .gap th.num { text-align: right; }
+.gap ul.changes { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+.gap .indices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--cds-gap-md); }
+.gap [data-dash-source-state=refreshing] { opacity: .5; }
+</style>
+
+<div class="gap">
+  <header id="titre">
+    <h1>Météo des marchés</h1>
+    <div style="display:flex;gap:var(--cds-gap-sm);align-items:center;flex-wrap:wrap;margin-top:var(--cds-gap-sm)">
+      <label class="muted" for="choix-indice">Indice</label>
+      <select class="dash-select" id="choix-indice" aria-label="Indice affiché">
+        <option value="S&amp;P 500">S&amp;P 500</option>
+        <option value="CAC 40">CAC 40</option>
+        <option value="MSCI World">MSCI World</option>
+      </select>
+    </div>
+    <p class="lead">Indice GAP du <span data-draw="nom">—</span> en <span data-draw="mois" data-source="derniere" data-field="mois">—</span> : <b data-draw="indice" data-source="derniere" data-field="indice">—</b> sur 100, soit le <span data-draw="pct" data-source="derniere" data-field="percentile">—</span>e percentile de ses 10 dernières années, en zone <b data-draw="zone" data-source="derniere" data-field="zone">—</b>. Un contexte sur 3 à 12 mois, pas un conseil d'achat ou de vente.</p>
+    <p class="maj">Mise à jour automatique chaque mois. Dernière mise à jour : <span data-draw="majdate">—</span> · données jusqu'à <span data-draw="majmois">—</span> · sources en échec : <span data-draw="majerr">—</span></p>
+  </header>
+
+  <section id="indices">
+    <h2>Les trois indices</h2>
+    <div class="indices">
+      <div class="card" id="idx-sp"><div><b>S&amp;P 500</b></div><div class="big" style="font-size:2rem" data-draw="carte" data-source="derniere" data-field="indice" data-where="indice_nom=S%26P%20500">—</div><div><span class="badge" data-draw="cartezone" data-source="derniere" data-field="zone" data-where="indice_nom=S%26P%20500">—</span></div><div class="muted">Données US.</div></div>
+      <div class="card" id="idx-cac"><div><b>CAC 40</b></div><div class="big" style="font-size:2rem" data-draw="carte" data-source="derniere" data-field="indice" data-where="indice_nom=CAC%2040">—</div><div><span class="badge" data-draw="cartezone" data-source="derniere" data-field="zone" data-where="indice_nom=CAC%2040">—</span></div><div class="muted">Zone euro 65 %, US 20 %, Chine 15 %.</div></div>
+      <div class="card" id="idx-msci"><div><b>MSCI World</b></div><div class="big" style="font-size:2rem" data-draw="carte" data-source="derniere" data-field="indice" data-where="indice_nom=MSCI%20World">—</div><div><span class="badge" data-draw="cartezone" data-source="derniere" data-field="zone" data-where="indice_nom=MSCI%20World">—</span></div><div class="muted">US 70 %, zone euro 20 %, Chine 10 %.</div></div>
+    </div>
+  </section>
+
+  <section id="synthese" class="hero">
+    <div class="card" id="carte-indice">
+      <div class="muted">Indice GAP · <span data-draw="nom">—</span></div>
+      <div class="big" data-draw="indice" data-source="derniere" data-field="indice">—</div>
+      <div style="margin-top:8px"><span class="badge" data-draw="zonebadge" data-source="derniere" data-field="zone">—</span></div>
+      <div class="muted" style="margin-top:8px"><span data-draw="var3m" data-source="derniere" data-field="variation_3m">—</span> pt sur 3 mois (contre <span data-draw="ind3m" data-source="derniere" data-field="indice_3m">—</span>)</div>
+    </div>
+    <div class="card" id="carte-lecture">
+      <div class="muted">Comment lire l'indice</div>
+      <p style="margin:6px 0 0">0 à 100. La zone se lit par rapport à l'historique de l'indice : <span class="z-prudence">prudence</span> sous le 20e percentile, <span class="z-favorable">favorable</span> au-dessus du 80e, <span class="z-neutre">neutre</span> entre les deux. L'indice mélange le niveau des piliers et leur tendance sur 3 mois.</p>
+    </div>
+  </section>
+
+  <section id="piliers">
+    <h2>Les 6 piliers — <span data-draw="nom">—</span></h2>
+    <p class="muted" style="margin:0 0 var(--cds-gap-sm)">Score de −2 (défavorable aux actions) à +2 (favorable), comparé à 10 ans d'historique. Flèche = variation sur 3 mois.</p>
+    <div class="grid6" data-draw="cartes" data-source="piliers"></div>
+  </section>
+
+  <section id="changements" class="card">
+    <h2>Ce qui a changé en 3 mois</h2>
+    <ul class="changes" data-draw="changes" data-source="piliers"></ul>
+  </section>
+
+  <section id="historique">
+    <h2>Historique de l'indice — <span data-draw="nom">—</span></h2>
+    <p class="muted" style="margin:0 0 var(--cds-gap-sm)">Zones rouges : mois en zone prudence. Survolez la courbe pour le détail.</p>
+    <div class="chartbox card" id="chart-historique" data-draw="chart" data-source="historique"></div>
+  </section>
+
+  <section id="indicateurs">
+    <h2>Indicateurs (dernière valeur)</h2>
+    <div class="tablewrap">
+      <table data-source="indicateurs" data-row-key="indicateur">
+        <thead><tr><th data-field="indicateur">Indicateur</th><th data-field="zone_geo">Zone</th><th class="num" data-field="valeur">Valeur</th><th data-field="unite">Unité</th><th class="num" data-field="score_z">Score</th><th data-field="mois">Mois</th></tr></thead>
+        <tbody data-draw="tind"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="backtest">
+    <h2>Backtest — <span data-draw="nom">—</span></h2>
+    <p class="muted" style="margin:0 0 var(--cds-gap-sm)">Corrélation entre l'indice et le rendement des 12 mois suivants, et stratégie « hors marché en zone prudence ». La variante D est celle affichée sur cette page.</p>
+    <div class="tablewrap">
+      <table data-source="backtest" data-row-key="indice_nom,variante">
+        <thead><tr><th data-field="variante">Variante</th><th data-field="periode">Période</th><th class="num" data-field="corr_12m">Corr. 12 mois</th><th class="num" data-field="corr_2008_2025">Corr. après 2008</th><th class="num" data-field="tcam_pct">Rendement annuel %</th><th class="num" data-field="perte_max_pct">Perte max %</th><th class="num" data-field="temps_investi_pct">Temps investi %</th></tr></thead>
+        <tbody data-draw="tbt"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <details id="methode" class="card">
+    <summary>Méthode et limites</summary>
+    <p>Chaque indicateur est converti en score sur 10 ans glissants (données passées uniquement), borné entre −2 et +2, et orienté pour que + soit favorable aux actions. Score d'un pilier = moyenne de ses indicateurs, pondérée par zone pour le CAC 40 (zone euro 65 %, US 20 %, Chine 15 %) et le MSCI World (US 70 %, zone euro 20 %, Chine 10 %). Indice = moyenne pondérée des piliers (25/15/20/15/15/10), ramenée sur 0-100, puis mélangée à moitié avec sa tendance sur 3 mois.</p>
+    <p>Sources : FRED (écart de crédit Baa − 10 ans, chômage US/France/Allemagne, Fed funds, Core PCE, inflation zone euro, taux BCE, dollar, euro, EPU US et Europe, indicateurs avancés de l'OCDE US/Allemagne/France/Chine, bons du Trésor), MSCI (MSCI World dividendes réinvestis depuis 2001), Yahoo Finance (CAC 40), multpl.com (bénéfices du S&amp;P 500), Shiller, VIX, Brent. Données arrêtées en septembre 2026, mises à jour à la main.</p>
+    <p>Limites : pas de valorisation pour le CAC 40 et le MSCI World (pas d'historique gratuit du PER) ; VIX utilisé à la place du VSTOXX ; inflation zone euro totale et non sous-jacente ; CAC 40 en prix avec un dividende supposé de 3 %/an ; Chine représentée seulement par son indicateur avancé ; pas d'ISM, de PMI ni de GPR. Ce n'est pas un conseil d'investissement.</p>
+  </details>
+</div>
+
+<script>
+const fmt = (v, d = 1) => (v == null || !isFinite(+v)) ? '—' : (+v).toLocaleString('fr-FR', {minimumFractionDigits: d, maximumFractionDigits: d});
+const zoneOf = (s) => s == null ? 'na' : s <= -0.5 ? 'prudence' : s >= 0.5 ? 'favorable' : 'neutre';
+const choix = () => dash.params().indice || 'S&P 500';
+const enc = (v) => encodeURIComponent(v);
+window.gapFmt = fmt; window.gapZone = zoneOf; window.gapChoix = choix; window.gapEnc = enc;
+
+dash.calc('derniere', {
+  title: 'Dernière valeur de chaque indice',
+  description: 'Dernier mois de l\'historique de chaque indice et variation par rapport à 3 mois avant.',
+  inputs: ['historique'],
+  fn: (historique) => {
+    const out = [];
+    for (const nom of ['S&P 500', 'CAC 40', 'MSCI World']) {
+      const rows = historique.filter((r) => r.indice_nom === nom && r.indice != null);
+      if (rows.length < 4) continue;
+      const last = rows[rows.length - 1], prev = rows[rows.length - 4];
+      out.push({indice_nom: nom, mois: last.mois, indice: +(+last.indice).toFixed(1), percentile: Math.round(+last.percentile), zone: last.zone,
+                indice_3m: +(+prev.indice).toFixed(1), variation_3m: +(last.indice - prev.indice).toFixed(1)});
+    }
+    return out;
+  }
+});
+
+document.querySelectorAll('#choix-indice').forEach((sel) => {
+  sel.value = choix();
+  sel.addEventListener('change', () => dash.setParams({indice: sel.value}));
+});
+
+const one = (el, f, nom) => {
+  const n = nom || choix();
+  if (!nom) el.setAttribute('data-where', 'indice_nom=' + enc(n));
+  const d = dash.data('derniere');
+  const r = (d.data || []).find((x) => x.indice_nom === n);
+  if (!r) { el.textContent = '—'; return; }
+  f(el, r);
+};
+const moisFr = (m) => { const [y, mo] = m.split('-'); return new Date(Date.UTC(+y, +mo - 1, 1)).toLocaleDateString('fr-FR', {month: 'long', year: 'numeric', timeZone: 'UTC'}); };
+const fromWhere = (el) => decodeURIComponent((el.getAttribute('data-where') || '').replace('indice_nom=', ''));
+dash.draw('nom', (el) => { el.textContent = choix(); });
+dash.draw('mois', (el) => one(el, (e, r) => e.textContent = moisFr(r.mois)));
+dash.draw('indice', (el) => one(el, (e, r) => e.textContent = fmt(r.indice)));
+dash.draw('pct', (el) => one(el, (e, r) => e.textContent = r.percentile));
+dash.draw('zone', (el) => one(el, (e, r) => { e.textContent = r.zone; e.className = 'z-' + r.zone; }));
+dash.draw('zonebadge', (el) => one(el, (e, r) => { e.textContent = r.zone; e.className = 'badge z-' + r.zone; }));
+dash.draw('var3m', (el) => one(el, (e, r) => { e.textContent = (r.variation_3m > 0 ? '+' : '') + fmt(r.variation_3m); }));
+dash.draw('ind3m', (el) => one(el, (e, r) => e.textContent = fmt(r.indice_3m)));
+dash.draw('carte', (el) => one(el, (e, r) => e.textContent = fmt(r.indice), fromWhere(el)));
+dash.draw('cartezone', (el) => one(el, (e, r) => { e.textContent = r.zone; e.className = 'badge z-' + r.zone; }, fromWhere(el)));
+</script>
+
+<script>
+const markP = (node, field, r) => {
+  node.setAttribute('data-source', 'piliers'); node.setAttribute('data-field', field);
+  node.setAttribute('data-where', 'indice_nom=' + window.gapEnc(r.indice_nom) + '&pilier=' + window.gapEnc(r.pilier));
+};
+dash.draw('cartes', (el) => {
+  const d = dash.data('piliers');
+  el.replaceChildren();
+  if (d.status !== 'ok') { el.textContent = d.status === 'loading' ? '' : '—'; return; }
+  for (const r of d.data.filter((x) => x.indice_nom === window.gapChoix())) {
+    const s = r.score == null ? null : +r.score;
+    const c = document.createElement('div');
+    c.className = 'card pcard z-' + window.gapZone(s);
+    c.id = 'pilier-' + r.pilier.toLowerCase().replace(/[^a-z]+/g, '-');
+    const nom = document.createElement('div'); nom.className = 'nom'; nom.textContent = r.pilier;
+    const poids = document.createElement('div'); poids.className = 'muted';
+    poids.textContent = 'Poids ' + r.poids + ' % · dans le score : ' + r.dans_le_score;
+    const sc = document.createElement('div'); sc.className = 'score'; markP(sc, 'score', r);
+    sc.textContent = s == null ? 'n.d.' : (s > 0 ? '+' : '') + window.gapFmt(s, 2);
+    const tr = document.createElement('div'); tr.className = 'muted';
+    if (r.variation_3m != null) {
+      const v = +r.variation_3m;
+      const arrow = document.createElement('span');
+      arrow.textContent = v > 0.1 ? '▲ ' : v < -0.1 ? '▼ ' : '► ';
+      arrow.className = v > 0.1 ? 'z-favorable' : v < -0.1 ? 'z-prudence' : '';
+      const val = document.createElement('span'); markP(val, 'variation_3m', r);
+      val.textContent = (v > 0 ? '+' : '') + window.gapFmt(v, 2);
+      tr.append(arrow, val, document.createTextNode(' sur 3 mois'));
+    } else {
+      tr.textContent = 'Donnée non disponible';
+    }
+    const ind = document.createElement('div'); ind.className = 'muted'; ind.textContent = r.indicateurs;
+    c.append(nom, sc, tr, poids, ind);
+    el.append(c);
+  }
+});
+
+dash.draw('changes', (el) => {
+  const d = dash.data('piliers');
+  el.replaceChildren();
+  if (d.status !== 'ok') return;
+  const mine = d.data.filter((x) => x.indice_nom === window.gapChoix());
+  const rows = mine.filter((r) => r.variation_3m != null).sort((a, b) => Math.abs(b.variation_3m) - Math.abs(a.variation_3m));
+  for (const r of rows) {
+    const li = document.createElement('li');
+    const v = +r.variation_3m;
+    const b = document.createElement('b'); b.textContent = r.pilier;
+    const val = document.createElement('span'); markP(val, 'variation_3m', r);
+    val.textContent = (v > 0 ? '+' : '') + window.gapFmt(v, 2);
+    val.className = v > 0.1 ? 'z-favorable' : v < -0.1 ? 'z-prudence' : '';
+    li.append(b, document.createTextNode(Math.abs(v) <= 0.1 ? ' : stable (' : v > 0 ? ' : s\'améliore (' : ' : se dégrade ('), val, document.createTextNode(')'));
+    el.append(li);
+  }
+  const miss = mine.filter((r) => r.variation_3m == null).map((r) => r.pilier);
+  if (miss.length) {
+    const li = document.createElement('li'); li.className = 'muted';
+    li.textContent = 'Non suivis faute de données : ' + miss.join(', ') + '.';
+    el.append(li);
+  }
+});
+
+const tableDraw = (src, cols, filt, key) => (tb) => {
+  const d = dash.data(src);
+  tb.replaceChildren();
+  if (d.status !== 'ok') return;
+  for (const r of d.data.filter(filt)) {
+    const tr = document.createElement('tr');
+    if (key) tr.setAttribute('data-key', key(r));
+    for (const [k, num, dec] of cols) {
+      const td = document.createElement('td');
+      if (num) td.className = 'num';
+      const v = r[k];
+      td.textContent = num ? (v == null ? '—' : window.gapFmt(v, dec)) : (v ?? '—');
+      tr.append(td);
+    }
+    tb.append(tr);
+  }
+};
+dash.draw('tind', tableDraw('indicateurs', [['indicateur'], ['zone_geo'], ['valeur', 1, 2], ['unite'], ['score_z', 1, 2], ['mois']], () => true));
+dash.draw('tbt', tableDraw('backtest', [['variante'], ['periode'], ['corr_12m', 1, 2], ['corr_2008_2025', 1, 2], ['tcam_pct', 1, 1], ['perte_max_pct', 1, 1], ['temps_investi_pct', 1, 0]],
+  (r) => r.indice_nom === window.gapChoix(), (r) => window.gapEnc(r.indice_nom) + ',' + window.gapEnc(r.variante)));
+</script>
+
+<script>
+dash.draw('chart', (el) => {
+  const d = dash.data('historique');
+  el.replaceChildren();
+  if (d.status === 'error') { el.textContent = 'Échec du chargement'; return; }
+  if (d.status !== 'ok') return;
+  const nom = window.gapChoix();
+  const rows = d.data.filter((r) => r.indice_nom === nom && r.indice != null).map((r) => ({...r, date: new Date(r.mois + '-01T00:00:00Z'), indice: +r.indice}));
+  const W = el.clientWidth - 2 * 16 || 600, H = 280;
+  const m = {t: 10, r: 10, b: 26, l: 34};
+  const x = d3.scaleUtc().domain(d3.extent(rows, (r) => r.date)).range([m.l, W - m.r]);
+  const y = d3.scaleLinear().domain([0, 100]).range([H - m.b, m.t]);
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`)
+    .attr('role', 'img').attr('aria-label', 'Indice GAP du ' + nom + ' par mois depuis 1996, entre 0 et 100, avec les mois en zone prudence surlignés');
+  if (!rows.length) return;
+  const step = x(new Date(Date.UTC(2001, 1, 1))) - x(new Date(Date.UTC(2001, 0, 1)));
+  svg.append('g').selectAll('rect').data(rows.filter((r) => r.zone === 'prudence')).join('rect')
+    .attr('x', (r) => x(r.date)).attr('width', Math.max(1, step)).attr('y', m.t).attr('height', H - m.b - m.t)
+    .style('fill', 'var(--cds-chart-status-critical)').style('opacity', 0.18);
+  svg.append('g').selectAll('line').data([35, 50, 65]).join('line')
+    .attr('x1', m.l).attr('x2', W - m.r).attr('y1', y).attr('y2', y)
+    .style('stroke', (v) => v === 50 ? 'var(--cds-chart-reference)' : 'var(--cds-chart-grid)').style('stroke-dasharray', '3 3');
+  const nt = Math.max(2, Math.floor(W / 90));
+  svg.append('g').attr('class', 'axis').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(nt).tickFormat(d3.utcFormat('%Y')));
+  svg.append('g').attr('class', 'axis').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).tickValues([0, 25, 50, 75, 100]));
+  svg.append('path').datum(rows).attr('d', d3.line().x((r) => x(r.date)).y((r) => y(r.indice)))
+    .style('fill', 'none').style('stroke', dash.colors[0]).style('stroke-width', 1.8);
+  const dot = svg.append('circle').attr('r', 4).style('fill', dash.colors[0]).style('display', 'none');
+  const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; el.append(tip);
+  const bis = d3.bisector((r) => r.date).center;
+  const move = (ev) => {
+    const [px] = d3.pointer(ev, svg.node());
+    const r = rows[bis(rows, x.invert(px))];
+    if (!r) return;
+    dot.style('display', null).attr('cx', x(r.date)).attr('cy', y(r.indice));
+    tip.hidden = false;
+    tip.textContent = `${r.mois} · indice ${window.gapFmt(r.indice)} · ${r.percentile == null ? '' : Math.round(r.percentile) + 'e pct · '}${r.zone ?? ''} · ${nom} ${window.gapFmt(r.prix, 0)}`;
+    const sr = svg.node().getBoundingClientRect(), er = el.getBoundingClientRect();
+    const bw = el.clientWidth, left = sr.left - er.left + (x(r.date) / W) * sr.width;
+    tip.style.left = Math.min(Math.max(0, left - tip.offsetWidth / 2), bw - tip.offsetWidth) + 'px';
+    tip.style.top = '4px';
+  };
+  svg.on('pointermove', move).on('pointerleave', () => { tip.hidden = true; dot.style('display', 'none'); });
+});
+</script>
+<script>
+const majRow = () => (dash.data('maj').data || [])[0];
+dash.draw('majdate', (el) => { const r = majRow(); el.textContent = r && r.mise_a_jour ? new Date(r.mise_a_jour.replace('Z', ':00Z')).toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'}) : '—'; });
+dash.draw('majmois', (el) => { const r = majRow(); el.textContent = r ? r.dernier_mois : '—'; });
+dash.draw('majerr', (el) => { const r = majRow(); el.textContent = r ? r.sources_en_echec : '—'; });
+</script>
+</div>
+</body>
+</html>
