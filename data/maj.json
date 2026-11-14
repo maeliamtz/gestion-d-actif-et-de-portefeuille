@@ -1,1 +1,1 @@
-{"date":"2026-11-13T12:00Z","erreurs":[]}
+{"date": "2026-11-14T16:04Z", "erreurs": ["FRED US: HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=60)", "FRED zone euro / Chine: HTTPSConnectionPool(host='fred.stlouisfed.org', port=443): Read timed out. (read timeout=60)"]}
