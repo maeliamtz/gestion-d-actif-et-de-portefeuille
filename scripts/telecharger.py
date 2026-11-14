@@ -9,7 +9,8 @@ import numpy as np, pandas as pd, requests
 
 D = os.path.join(os.path.dirname(__file__), "..", "data")
 os.makedirs(D, exist_ok=True)
-UA = {"User-Agent": "Mozilla/5.0 (appli-gap; mise a jour mensuelle)"}
+UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+      "Accept": "text/csv,text/html,application/json;q=0.9,*/*;q=0.8", "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8"}
 FIN = (pd.Timestamp.today().to_period("M") - 1).to_timestamp()        # dernier mois complet
 MOIS = pd.date_range("1984-01-01", FIN, freq="MS")
 erreurs = []
@@ -17,7 +18,7 @@ erreurs = []
 def get(url, **kw):
     for essai in range(3):
         try:
-            r = requests.get(url, headers=UA, timeout=60, **kw); r.raise_for_status(); return r
+            r = requests.get(url, headers=UA, timeout=120, **kw); r.raise_for_status(); return r
         except Exception as e:
             if essai == 2: raise
             time.sleep(5)
@@ -114,5 +115,5 @@ for nom, fn in [("FRED US", fred_us), ("FRED zone euro / Chine", fred_eu), ("CAC
                 ("multpl", multpl), ("GitHub datasets", datasets)]:
     etape(nom, fn)
 
-json.dump({"date": dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%MZ"), "erreurs": erreurs}, open(os.path.join(D, "maj.json"), "w"), ensure_ascii=False)
+json.dump({"date": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%MZ"), "erreurs": erreurs}, open(os.path.join(D, "maj.json"), "w"), ensure_ascii=False)
 print("Erreurs :", erreurs or "aucune")
