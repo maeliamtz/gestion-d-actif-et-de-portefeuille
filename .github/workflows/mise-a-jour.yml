@@ -32,6 +32,8 @@ jobs:
 
       - name: Télécharger les données (FRED, MSCI, Yahoo, multpl...)
         if: github.event_name != 'push'
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python scripts/telecharger.py
 
       - name: Calculer l'indice et préparer le site

@@ -23,7 +23,17 @@ def get(url, **kw):
             if essai == 2: raise
             time.sleep(5)
 
+FRED_KEY = os.environ.get("FRED_API_KEY", "").strip()
+
 def fred(id_, debut="1983-01-01"):
+    """Série mensuelle FRED. Avec une clé (secret GitHub FRED_API_KEY) : API officielle, sinon page de téléchargement publique."""
+    if FRED_KEY:
+        u = ("https://api.stlouisfed.org/fred/series/observations"
+             f"?series_id={id_}&api_key={FRED_KEY}&file_type=json&observation_start={debut}&frequency=m&aggregation_method=avg")
+        obs = get(u).json()["observations"]
+        s = pd.Series({pd.Timestamp(o["date"]): pd.to_numeric(o["value"], errors="coerce") for o in obs}).dropna()
+        s.index = s.index.to_period("M").to_timestamp()
+        return s
     r = get(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={id_}&cosd={debut}&fq=Monthly&fam=avg")
     s = pd.read_csv(io.StringIO(r.text))
     s.columns = ["date", "v"]
@@ -38,7 +48,8 @@ def etape(nom, fn):
     print(nom)
     try: fn()
     except Exception as e:
-        erreurs.append(f"{nom}: {e}"); print(f"  ÉCHEC ({e}) : fichier précédent conservé")
+        msg = str(e).replace(FRED_KEY, "***") if FRED_KEY else str(e)
+        erreurs.append(f"{nom}: {msg[:200]}"); print(f"  ÉCHEC ({msg}) : fichier précédent conservé")
 
 def mois_str(i): return [d.strftime("%Y-%m") for d in i]
 def f(s, d): return s.round(d)
