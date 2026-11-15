@@ -140,7 +140,7 @@ LIBP = {"Croissance": "la croissance", "Inflation et banques centrales": "l'infl
         "Sentiment et tendance": "le sentiment et la tendance", "Géopolitique et incertitude": "la géopolitique et l'incertitude"}
 MOISFR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
 fr1 = lambda v: f"{v:.1f}".replace(".", ",")
-nb = lambda v, d=2: f"{round(float(v), 4):+.{d}f}".replace(".", ",").replace("-", "−")
+nb = lambda v, d=2: f"{math.copysign(math.floor(abs(round(float(v), 4)) * 10**d + 0.5), v) / 10**d:+.{d}f}".replace(".", ",").replace("-", "−")
 syn, act_rows = [], []
 for nom, s in SER.items():
     D_ = s["D"].dropna(); v, v3 = D_[LAST], D_[PREV]; zone = zname(s["pct"][LAST])
