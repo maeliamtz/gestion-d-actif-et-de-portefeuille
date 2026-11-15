@@ -4,6 +4,7 @@ on:
   schedule:
     - cron: "17 6 3 * *"    # le 3 de chaque mois à 6h17 (UTC)
     - cron: "17 6 18 * *"   # et le 18, pour récupérer les données publiées en retard
+    - cron: "17 6 * * 1"    # chaque lundi, pour rafraîchir l'actualité
   workflow_dispatch:         # bouton « Run workflow » pour lancer à la main
   push:
     branches: [main]

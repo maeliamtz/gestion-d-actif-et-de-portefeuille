@@ -122,8 +122,36 @@ def datasets():
         t = get(f"{B}/{chemin}").text
         open(os.path.join(D, nom), "w").write(t); print(f"  {nom}: {t.count(chr(10))} lignes")
 
+# ---------- Actualité (titres Google Actualités, en français) ----------
+REQUETES = {"wall_street": "Wall Street bourse", "fed": "Fed taux Powell", "cac": "CAC 40 Bourse de Paris",
+            "bce": "BCE taux zone euro", "monde": "marchés financiers mondiaux"}
+def actualite():
+    import xml.etree.ElementTree as ET
+    from email.utils import parsedate_to_datetime
+    limite = dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=10)
+    articles, vus = [], set()
+    for theme, q in REQUETES.items():
+        u = "https://news.google.com/rss/search?hl=fr&gl=FR&ceid=FR:fr&q=" + requests.utils.quote(q + " when:7d")
+        racine = ET.fromstring(get(u).content)
+        n = 0
+        for it in racine.iter("item"):
+            titre = (it.findtext("title") or "").strip()
+            src = (it.findtext("source") or "").strip()
+            if src and titre.endswith(" - " + src): titre = titre[: -len(src) - 3].strip()
+            try: date = parsedate_to_datetime(it.findtext("pubDate"))
+            except Exception: continue
+            cle = titre.lower()[:80]
+            if not titre or date < limite or cle in vus: continue
+            vus.add(cle); n += 1
+            articles.append({"theme": theme, "titre": titre, "source": src, "lien": it.findtext("link"), "date": date.strftime("%Y-%m-%d")})
+            if n >= 8: break
+    if not articles: raise RuntimeError("aucun article récent")
+    json.dump({"date": dt.date.today().isoformat(), "articles": articles},
+              open(os.path.join(D, "actualite.json"), "w"), ensure_ascii=False, indent=1)
+    print(f"  actualite.json: {len(articles)} articles")
+
 for nom, fn in [("FRED US", fred_us), ("FRED zone euro / Chine", fred_eu), ("CAC 40", cac40), ("MSCI World", msci),
-                ("multpl", multpl), ("GitHub datasets", datasets)]:
+                ("multpl", multpl), ("GitHub datasets", datasets), ("Actualité", actualite)]:
     etape(nom, fn)
 
 json.dump({"date": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%MZ"), "erreurs": erreurs}, open(os.path.join(D, "maj.json"), "w"), ensure_ascii=False)

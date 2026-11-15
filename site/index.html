@@ -27,7 +27,7 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
 <script>
 /* Petit moteur qui remplace celui du tableau de bord Claude : charge les fichiers JSON et redessine la page. */
 (function () {
-  const SOURCES = ['historique', 'piliers', 'indicateurs', 'backtest', 'maj'];
+  const SOURCES = ['historique', 'piliers', 'indicateurs', 'maj', 'synthese', 'actualite'];
   const store = {}, calcs = {}, draws = {};
   let params = {};
   SOURCES.forEach((id) => (store[id] = {status: 'loading', data: []}));
@@ -89,7 +89,9 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
 .gap th { font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
 .gap td.num, .gap th.num { text-align: right; }
 .gap ul.changes { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
-.gap .indices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--cds-gap-md); }
+.gap .synth { margin: 0; line-height: 1.55; max-width: 62em; }
+.gap ul.actu { margin: var(--cds-gap-md) 0 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+.gap ul.actu a { color: var(--color-fg); }
 .gap [data-dash-source-state=refreshing] { opacity: .5; }
 </style>
 
@@ -105,16 +107,13 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
       </select>
     </div>
     <p class="lead">Indice GAP du <span data-draw="nom">—</span> en <span data-draw="mois" data-source="derniere" data-field="mois">—</span> : <b data-draw="indice" data-source="derniere" data-field="indice">—</b> sur 100, soit le <span data-draw="pct" data-source="derniere" data-field="percentile">—</span>e percentile de ses 10 dernières années, en zone <b data-draw="zone" data-source="derniere" data-field="zone">—</b>. Un contexte sur 3 à 12 mois, pas un conseil d'achat ou de vente.</p>
-    <p class="maj">Mise à jour automatique chaque mois. Dernière mise à jour : <span data-draw="majdate">—</span> · données jusqu'à <span data-draw="majmois">—</span> · sources en échec : <span data-draw="majerr">—</span></p>
+    <p class="maj">Mise à jour automatique chaque mois. Dernière mise à jour : <span data-draw="majdate">—</span> · données jusqu'à <span data-draw="majmois">—</span></p>
   </header>
 
-  <section id="indices">
-    <h2>Les trois indices</h2>
-    <div class="indices">
-      <div class="card" id="idx-sp"><div><b>S&amp;P 500</b></div><div class="big" style="font-size:2rem" data-draw="carte" data-source="derniere" data-field="indice" data-where="indice_nom=S%26P%20500">—</div><div><span class="badge" data-draw="cartezone" data-source="derniere" data-field="zone" data-where="indice_nom=S%26P%20500">—</span></div><div class="muted">Données US.</div></div>
-      <div class="card" id="idx-cac"><div><b>CAC 40</b></div><div class="big" style="font-size:2rem" data-draw="carte" data-source="derniere" data-field="indice" data-where="indice_nom=CAC%2040">—</div><div><span class="badge" data-draw="cartezone" data-source="derniere" data-field="zone" data-where="indice_nom=CAC%2040">—</span></div><div class="muted">Zone euro 65 %, US 20 %, Chine 15 %.</div></div>
-      <div class="card" id="idx-msci"><div><b>MSCI World</b></div><div class="big" style="font-size:2rem" data-draw="carte" data-source="derniere" data-field="indice" data-where="indice_nom=MSCI%20World">—</div><div><span class="badge" data-draw="cartezone" data-source="derniere" data-field="zone" data-where="indice_nom=MSCI%20World">—</span></div><div class="muted">US 70 %, zone euro 20 %, Chine 10 %.</div></div>
-    </div>
+  <section id="monde" class="card">
+    <h2>Où en est le monde</h2>
+    <p class="synth" data-draw="synthese" data-source="synthese">—</p>
+    <div data-draw="actu" data-source="actualite"></div>
   </section>
 
   <section id="synthese" class="hero">
@@ -157,22 +156,10 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
     </div>
   </section>
 
-  <section id="backtest">
-    <h2>Backtest — <span data-draw="nom">—</span></h2>
-    <p class="muted" style="margin:0 0 var(--cds-gap-sm)">Corrélation entre l'indice et le rendement des 12 mois suivants, et stratégie « hors marché en zone prudence ». La variante D est celle affichée sur cette page.</p>
-    <div class="tablewrap">
-      <table data-source="backtest" data-row-key="indice_nom,variante">
-        <thead><tr><th data-field="variante">Variante</th><th data-field="periode">Période</th><th class="num" data-field="corr_12m">Corr. 12 mois</th><th class="num" data-field="corr_2008_2025">Corr. après 2008</th><th class="num" data-field="tcam_pct">Rendement annuel %</th><th class="num" data-field="perte_max_pct">Perte max %</th><th class="num" data-field="temps_investi_pct">Temps investi %</th></tr></thead>
-        <tbody data-draw="tbt"></tbody>
-      </table>
-    </div>
-  </section>
-
   <details id="methode" class="card">
-    <summary>Méthode et limites</summary>
+    <summary>Méthode</summary>
     <p>Chaque indicateur est converti en score sur 10 ans glissants (données passées uniquement), borné entre −2 et +2, et orienté pour que + soit favorable aux actions. Score d'un pilier = moyenne de ses indicateurs, pondérée par zone pour le CAC 40 (zone euro 65 %, US 20 %, Chine 15 %) et le MSCI World (US 70 %, zone euro 20 %, Chine 10 %). Indice = moyenne pondérée des piliers (25/15/20/15/15/10), ramenée sur 0-100, puis mélangée à moitié avec sa tendance sur 3 mois.</p>
-    <p>Sources : FRED (écart de crédit Baa − 10 ans, chômage US/France/Allemagne, Fed funds, Core PCE, inflation zone euro, taux BCE, dollar, euro, EPU US et Europe, indicateurs avancés de l'OCDE US/Allemagne/France/Chine, bons du Trésor), MSCI (MSCI World dividendes réinvestis depuis 2001), Yahoo Finance (CAC 40), multpl.com (bénéfices du S&amp;P 500), Shiller, VIX, Brent. Données arrêtées en septembre 2026, mises à jour à la main.</p>
-    <p>Limites : pas de valorisation pour le CAC 40 et le MSCI World (pas d'historique gratuit du PER) ; VIX utilisé à la place du VSTOXX ; inflation zone euro totale et non sous-jacente ; CAC 40 en prix avec un dividende supposé de 3 %/an ; Chine représentée seulement par son indicateur avancé ; pas d'ISM, de PMI ni de GPR. Ce n'est pas un conseil d'investissement.</p>
+    <p>Sources : FRED (écart de crédit Baa − 10 ans, chômage US/France/Allemagne, Fed funds, Core PCE, inflation zone euro, taux BCE, dollar, euro, EPU US et Europe, indicateurs avancés de l'OCDE US/Allemagne/France/Chine, bons du Trésor), MSCI (MSCI World dividendes réinvestis depuis 2001), Yahoo Finance (CAC 40), multpl.com (bénéfices du S&amp;P 500), Shiller, VIX, Brent ; titres de l'actualité : Google Actualités. Mise à jour automatique.</p>
   </details>
 </div>
 
@@ -214,7 +201,6 @@ const one = (el, f, nom) => {
   f(el, r);
 };
 const moisFr = (m) => { const [y, mo] = m.split('-'); return new Date(Date.UTC(+y, +mo - 1, 1)).toLocaleDateString('fr-FR', {month: 'long', year: 'numeric', timeZone: 'UTC'}); };
-const fromWhere = (el) => decodeURIComponent((el.getAttribute('data-where') || '').replace('indice_nom=', ''));
 dash.draw('nom', (el) => { el.textContent = choix(); });
 dash.draw('mois', (el) => one(el, (e, r) => e.textContent = moisFr(r.mois)));
 dash.draw('indice', (el) => one(el, (e, r) => e.textContent = fmt(r.indice)));
@@ -223,8 +209,27 @@ dash.draw('zone', (el) => one(el, (e, r) => { e.textContent = r.zone; e.classNam
 dash.draw('zonebadge', (el) => one(el, (e, r) => { e.textContent = r.zone; e.className = 'badge z-' + r.zone; }));
 dash.draw('var3m', (el) => one(el, (e, r) => { e.textContent = (r.variation_3m > 0 ? '+' : '') + fmt(r.variation_3m); }));
 dash.draw('ind3m', (el) => one(el, (e, r) => e.textContent = fmt(r.indice_3m)));
-dash.draw('carte', (el) => one(el, (e, r) => e.textContent = fmt(r.indice), fromWhere(el)));
-dash.draw('cartezone', (el) => one(el, (e, r) => { e.textContent = r.zone; e.className = 'badge z-' + r.zone; }, fromWhere(el)));
+dash.draw('synthese', (el) => {
+  const d = dash.data('synthese');
+  const r = (d.data || []).find((x) => x.indice_nom === choix());
+  el.textContent = r ? r.texte : (d.status === 'loading' ? '' : '—');
+});
+dash.draw('actu', (el) => {
+  const d = dash.data('actualite');
+  el.replaceChildren();
+  const rows = (d.data || []).filter((x) => x.indice_nom === choix());
+  if (!rows.length) return;
+  const t = document.createElement('div'); t.className = 'muted'; t.style.marginTop = 'var(--cds-gap-md)'; t.textContent = 'À la une';
+  const ul = document.createElement('ul'); ul.className = 'actu';
+  for (const r of rows) {
+    const li = document.createElement('li');
+    const a = document.createElement('a'); a.href = r.lien; a.target = '_blank'; a.rel = 'noopener'; a.textContent = r.titre;
+    const m = document.createElement('span'); m.className = 'muted';
+    m.textContent = ' — ' + (r.source ? r.source + ', ' : '') + new Date(r.date + 'T00:00:00Z').toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', timeZone: 'UTC'});
+    li.append(a, m); ul.append(li);
+  }
+  el.append(t, ul);
+});
 </script>
 
 <script>
@@ -306,8 +311,6 @@ const tableDraw = (src, cols, filt, key) => (tb) => {
   }
 };
 dash.draw('tind', tableDraw('indicateurs', [['indicateur'], ['zone_geo'], ['valeur', 1, 2], ['unite'], ['score_z', 1, 2], ['mois']], () => true));
-dash.draw('tbt', tableDraw('backtest', [['variante'], ['periode'], ['corr_12m', 1, 2], ['corr_2008_2025', 1, 2], ['tcam_pct', 1, 1], ['perte_max_pct', 1, 1], ['temps_investi_pct', 1, 0]],
-  (r) => r.indice_nom === window.gapChoix(), (r) => window.gapEnc(r.indice_nom) + ',' + window.gapEnc(r.variante)));
 </script>
 
 <script>
@@ -359,7 +362,6 @@ dash.draw('chart', (el) => {
 const majRow = () => (dash.data('maj').data || [])[0];
 dash.draw('majdate', (el) => { const r = majRow(); el.textContent = r && r.mise_a_jour ? new Date(r.mise_a_jour.replace('Z', ':00Z')).toLocaleDateString('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'}) : '—'; });
 dash.draw('majmois', (el) => { const r = majRow(); el.textContent = r ? r.dernier_mois : '—'; });
-dash.draw('majerr', (el) => { const r = majRow(); el.textContent = r ? r.sources_en_echec : '—'; });
 </script>
 </div>
 </body>

@@ -68,6 +68,7 @@ for nom, s in SER.items():
                      "variation_3m": sc - sp if np.isfinite(sc) and np.isfinite(sp) else None,
                      "dans_le_score": "non (garde-fou)" if col == "valo" and np.isfinite(sc) else ("non (indisponible)" if not np.isfinite(sc) else "oui"),
                      "indicateurs": DESC[nom][col]})
+rows_piliers = rows
 dump("piliers", rows)
 
 # 3. indicateurs (dernière valeur), toutes zones
@@ -119,3 +120,59 @@ info = json.load(open(maj)) if os.path.exists(maj) else {"date": None, "erreurs"
 json.dump({"rows": [{"mise_a_jour": info.get("date"), "dernier_mois": LAST.strftime("%Y-%m"),
                      "sources_en_echec": "; ".join(info.get("erreurs") or []) or "aucune"}], "meta": META},
           open(f"{OUT}/maj.json", "w"), ensure_ascii=False)
+
+# 6. Synthèse « où en est le monde » + actualité (titres récents)
+import re
+act_f = os.path.join(HERE, "..", "data", "actualite.json")
+ACT = json.load(open(act_f)).get("articles", []) if os.path.exists(act_f) else []
+THEMES_IDX = {"S&P 500": ["wall_street", "fed", "monde"], "CAC 40": ["cac", "bce", "monde"], "MSCI World": ["monde", "wall_street", "fed", "bce"]}
+SUJETS = [(r"\bFed\b|Réserve fédérale|Powell", "la Fed"), (r"\bBCE\b|Lagarde", "la BCE"),
+          (r"inflation|prix à la consommation", "l'inflation"), (r"\btaux\b", "les taux d'intérêt"),
+          (r"droits de douane|tarifs douaniers|guerre commerciale", "les droits de douane"),
+          (r"pétrole|Brent|Opep", "le pétrole"), (r"emploi|chômage", "l'emploi"),
+          (r"résultats|bénéfices|chiffre d'affaires", "les résultats des entreprises"),
+          (r"\bIA\b|intelligence artificielle|Nvidia", "l'intelligence artificielle"), (r"Chine|Pékin|chinois", "la Chine"),
+          (r"guerre|Ukraine|Russie|Israël|Iran|Moyen-Orient|géopoliti", "les tensions géopolitiques"),
+          (r"élection|gouvernement|budget|shutdown|Trump", "la politique et les budgets"),
+          (r"récession|croissance|PIB", "la croissance"), (r"dollar|euro\b|devise", "les devises")]
+LIBP = {"Croissance": "la croissance", "Inflation et banques centrales": "l'inflation et les banques centrales",
+        "Conditions financières": "les conditions financières", "Valorisation": "la valorisation",
+        "Sentiment et tendance": "le sentiment et la tendance", "Géopolitique et incertitude": "la géopolitique et l'incertitude"}
+MOISFR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+fr1 = lambda v: f"{v:.1f}".replace(".", ",")
+nb = lambda v, d=2: f"{round(float(v), 4):+.{d}f}".replace(".", ",").replace("-", "−")
+syn, act_rows = [], []
+for nom, s in SER.items():
+    D_ = s["D"].dropna(); v, v3 = D_[LAST], D_[PREV]; zone = zname(s["pct"][LAST])
+    pil = [r for r in rows_piliers if r["indice_nom"] == nom]
+    dans = [r for r in pil if r["dans_le_score"] == "oui" and r["score"] is not None and np.isfinite(r["score"])]
+    fort, faible = max(dans, key=lambda r: r["score"]), min(dans, key=lambda r: r["score"])
+    bouge = [r for r in dans if r["variation_3m"] is not None]
+    dv = v - v3
+    sens = f"en hausse de {fr1(dv)}" if dv > 0.5 else f"en baisse de {fr1(-dv)}" if dv < -0.5 else "quasi stable"
+    pts = "" if abs(dv) <= 0.5 else (" point" if abs(dv) < 2 else " points")
+    t = f"En {MOISFR[LAST.month - 1]} {LAST.year}, le contexte est {zone} pour le {nom} ({fr1(v)}/100, {sens}{pts} sur 3 mois). "
+    t += f"Principal soutien : {LIBP[fort['pilier']]} ({nb(fort['score'])}). Principal frein : {LIBP[faible['pilier']]} ({nb(faible['score'])}). "
+    if bouge:
+        b = max(bouge, key=lambda r: abs(r["variation_3m"]))
+        if abs(b["variation_3m"]) > 0.1:
+            t += f"Ce qui a le plus bougé en 3 mois : {LIBP[b['pilier']]}, qui {"s'améliore" if b['variation_3m'] > 0 else 'se dégrade'} ({nb(b['variation_3m'])}). "
+    valo = next((r for r in pil if r["pilier"] == "Valorisation" and r["score"] is not None and np.isfinite(r["score"])), None)
+    if valo and valo["score"] <= -1: t += "La valorisation reste élevée : le marché paraît cher (garde-fou, hors score). "
+    mes = sorted([a for a in ACT if a["theme"] in THEMES_IDX[nom]], key=lambda a: a["date"], reverse=True)
+    vus = set(); mes = [a for a in mes if not (a["titre"] in vus or vus.add(a["titre"]))]
+    compte = {}
+    for a in mes:
+        for rx, lib in SUJETS:
+            if re.search(rx, a["titre"], re.I): compte[lib] = compte.get(lib, 0) + 1
+    tri = sorted(compte.items(), key=lambda x: -x[1])
+    top = [k for k, n in tri if n >= 2][:3] or [k for k, n in tri][:2]
+    if top:
+        t += "Dans l'actualité de ces derniers jours, les marchés suivent surtout " + (", ".join(top[:-1]) + " et " + top[-1] if len(top) > 1 else top[0]) + "."
+    elif not mes:
+        t += "L'actualité récente n'a pas pu être récupérée."
+    syn.append({"indice_nom": nom, "texte": t.strip()})
+    for a in mes[:5]:
+        act_rows.append({"indice_nom": nom, **{k: a[k] for k in ["titre", "source", "lien", "date"]}})
+dump("synthese", syn)
+dump("actualite", act_rows)
