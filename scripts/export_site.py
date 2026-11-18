@@ -179,3 +179,27 @@ for nom, s in SER.items():
         act_rows.append({"indice_nom": nom, **{k: a[k] for k in ["titre", "source", "lien", "date"]}})
 dump("synthese", syn)
 dump("actualite", act_rows)
+
+# 7. Simulateur : séries mensuelles complètes (piliers, rendement total, placement sans risque)
+#    La page recalcule l'indice et la gestion avec les poids choisis par l'utilisateur.
+SIM = {"S&P 500": dict(ret=us.ret, cash=us.cash, start=us.start),
+       "CAC 40": dict(ret=mi.CFG["CAC 40"]["ret"], cash=mi.CFG["CAC 40"]["cash"], start=mi.CFG["CAC 40"]["start"]),
+       "MSCI World": dict(ret=mi.CFG["MSCI World"]["ret"], cash=mi.CFG["MSCI World"]["cash"], start=mi.CFG["MSCI World"]["start"])}
+r6 = lambda v: None if v is None or not np.isfinite(v) else round(float(v), 6)
+sim = []
+for nom, c in SIM.items():
+    P = SER[nom]["P"].loc[:LAST]
+    P = P[P.notna().any(axis=1)]
+    for d in P.index:
+        sim.append({"indice_nom": nom, "mois": d.strftime("%Y-%m"), **{k: r6(P[k][d]) if k in P else None for k in
+                    ["croissance", "infl", "financier", "valo", "sentiment", "incertitude"]},
+                    "ret": r6(c["ret"].get(d, np.nan)), "cash": r6(c["cash"].get(d, np.nan)),
+                    "debut": 1 if d.strftime("%Y-%m") == c["start"][:7] else 0, "D_ref": r6(SER[nom]["D"].get(d, np.nan))})
+json.dump({"rows": sim, "meta": META}, open(f"{OUT}/simulation.json", "w"), ensure_ascii=False, separators=(",", ":"))
+print("simulation", len(sim))
+# Référence pour vérifier le calcul de la page : TCAM / perte max / temps investi de la règle « sortir si note 1 »
+for nom, c in SIM.items():
+    pr = SER[nom]["pct"]; inv = (pr > .2).astype(float).where(pr.notna()).shift(1)
+    rr = (inv * c["ret"] + (1 - inv) * c["cash"])[c["start"]:LAST.strftime("%Y-%m-%d")].dropna(); eq = (1 + rr).cumprod()
+    print(" ref", nom, "TCAM %.4f perte %.4f investi %.4f n=%d" % (eq.iloc[-1] ** (12 / len(rr)) - 1, (eq / eq.cummax() - 1).min(),
+          inv[c["start"]:LAST.strftime("%Y-%m-%d")].mean(), len(rr)))

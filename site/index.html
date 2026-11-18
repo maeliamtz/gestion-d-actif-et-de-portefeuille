@@ -25,13 +25,14 @@ body { margin: 0; background: var(--fond), var(--color-bg); background-repeat: n
 .dash-select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--b-violet); background-color: var(--color-panel); color: var(--color-fg); }
 .maj { font-size: 13px; color: var(--color-fg-muted); margin-top: 6px; }
 </style>
+<script src="simulateur.js"></script>
 </head>
 <body>
 <div id="dash-root">
 <script>
 /* Petit moteur qui remplace celui du tableau de bord Claude : charge les fichiers JSON et redessine la page. */
 (function () {
-  const SOURCES = ['historique', 'piliers', 'indicateurs', 'maj', 'synthese', 'actualite'];
+  const SOURCES = ['historique', 'piliers', 'indicateurs', 'maj', 'synthese', 'actualite', 'simulation'];
   const store = {}, calcs = {}, draws = {};
   let params = {};
   SOURCES.forEach((id) => (store[id] = {status: 'loading', data: []}));
@@ -52,6 +53,7 @@ body { margin: 0; background: var(--fond), var(--color-bg); background-repeat: n
     draw: (name, fn) => { draws[name] = fn; },
     params: () => params,
     setParams: (p) => { params = Object.assign({}, params, p); render(); },
+    redraw: (name) => document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => { try { draws[name](el); } catch (e) { console.error(name, e); } }),
     colors: ['var(--serie)'],
     couleur: () => ({'S&P 500': 'var(--s1)', 'CAC 40': 'var(--s2)', 'MSCI World': 'var(--s3)'})[params.indice || 'S&P 500'],
     onData: (fn) => fn(),
@@ -129,6 +131,23 @@ body { margin: 0; background: var(--fond), var(--color-bg); background-repeat: n
 .gap .echelle { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .gap .echelle span { display: flex; align-items: center; gap: 8px; font-size: var(--cds-font-size-caption); }
 .gap .echelle i { width: 22px; height: 12px; border-radius: 4px; flex: none; }
+.gap .simu { display: grid; grid-template-columns: minmax(260px, 330px) 1fr; gap: var(--cds-gap-lg); align-items: start; }
+@media (max-width: 820px) { .gap .simu { grid-template-columns: 1fr; } }
+.gap .curseur { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin-bottom: 10px; font-size: var(--cds-font-size-caption); }
+.gap .curseur label { color: var(--color-fg); }
+.gap .curseur output { color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.gap .curseur input[type=range] { grid-column: 1 / -1; width: 100%; margin: 4px 0 0; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--s3) 0 var(--rempli, 50%), var(--b-violet) var(--rempli, 50%) 100%); cursor: pointer; }
+.gap .curseur input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--color-panel); border: 3px solid var(--s3); }
+.gap .curseur input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--color-panel); border: 3px solid var(--s3); }
+.gap .curseur input[type=range]:disabled { cursor: default; }
+.gap .curseur.off { opacity: .45; }
+.gap .simu-sep { border: 0; border-top: 1px solid var(--b-violet); margin: 12px 0; }
+.gap .btn { font: inherit; font-size: var(--cds-font-size-caption); padding: 5px 12px; border-radius: 8px; border: 1px solid var(--b-violet); background: var(--color-panel); color: var(--titre); cursor: pointer; }
+.gap table.res { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; margin-bottom: var(--cds-gap-md); }
+.gap table.res th, .gap table.res td { padding: 6px 8px; text-align: right; }
+.gap table.res th:first-child, .gap table.res td:first-child { text-align: left; }
+.gap .mieux { color: var(--color-ok); font-weight: var(--cds-font-weight-medium); }
 .gap details summary { cursor: pointer; color: var(--titre); font-weight: var(--cds-font-weight-medium); }
 </style>
 
@@ -205,6 +224,23 @@ body { margin: 0; background: var(--fond), var(--color-bg); background-repeat: n
     </div>
     <div class="legend"><span><i style="background:var(--s1)"></i>S&amp;P 500</span><span><i style="background:var(--s2)"></i>CAC 40</span><span><i style="background:var(--s3)"></i>MSCI World</span></div>
     <div class="chartbox card" id="chart-comparaison" data-draw="compare" data-source="historique"></div>
+  </section>
+
+  <section id="simulateur">
+    <h2>Simulateur de gestion</h2>
+    <p class="muted" style="margin:0 0 var(--cds-gap-sm)">Changez le poids de chaque pilier et la règle de gestion : l'indice, la note et la gestion passée de l'indice choisi sont recalculés aussitôt.</p>
+    <div class="simu">
+      <div class="card" id="simu-reglages">
+        <div id="curseurs"></div>
+        <hr class="simu-sep">
+        <div class="curseur"><label for="c-tendance">Part de la tendance sur 3 mois</label><output id="o-tendance"></output>
+          <input type="range" id="c-tendance" min="0" max="100" step="10"></div>
+        <label class="muted" for="c-regle" style="font-size:var(--cds-font-size-caption)">Règle de gestion</label>
+        <select class="dash-select" id="c-regle" style="width:100%;margin:4px 0 12px;font-size:var(--cds-font-size-caption)"></select>
+        <button type="button" class="btn" id="c-reset">Revenir aux poids de l'appli</button>
+      </div>
+      <div class="card" data-draw="simu" data-source="simulation"></div>
+    </div>
   </section>
 
   <section id="indicateurs">
@@ -513,6 +549,127 @@ dash.draw('compare', (el) => {
       tip.style.top = '8px';
     })
     .on('pointerleave', () => { tip.hidden = true; cross.style('display', 'none'); dots.forEach((dd) => dd.style('display', 'none')); });
+});
+</script>
+<script>
+/* ---------- Simulateur ---------- */
+const DEF = {poids: {croissance: 25, infl: 15, financier: 20, valo: 0, sentiment: 15, incertitude: 10}, tendance: 50, regle: 'sortie1'};
+const LIBS = {croissance: 'Croissance', infl: 'Inflation et banques centrales', financier: 'Conditions financières',
+  valo: 'Valorisation', sentiment: 'Sentiment et tendance', incertitude: 'Géopolitique et incertitude'};
+const ST = JSON.parse(JSON.stringify(DEF));
+const pctFr = (v, d = 1) => (v * 100).toLocaleString('fr-FR', {minimumFractionDigits: d, maximumFractionDigits: d}) + ' %';
+const DEV = () => choix() === 'CAC 40' ? ' €' : ' $';
+const eurFr = (v) => Math.round(v).toLocaleString('fr-FR') + DEV();
+const valoDispo = () => choix() === 'S&P 500';
+(function initSimu() {
+  const box = document.getElementById('curseurs');
+  for (const k of GapSimu.PILIERS) {
+    const d = document.createElement('div'); d.className = 'curseur'; d.id = 'w-' + k;
+    d.innerHTML = `<label for="c-${k}">${LIBS[k]}</label><output id="o-${k}"></output><input type="range" id="c-${k}" min="0" max="50" step="5">`;
+    box.append(d);
+    d.querySelector('input').addEventListener('input', (ev) => { ST.poids[k] = +ev.target.value; majCurseurs(); dash.redraw('simu'); });
+  }
+  const t = document.getElementById('c-tendance');
+  t.addEventListener('input', () => { ST.tendance = +t.value; majCurseurs(); dash.redraw('simu'); });
+  const r = document.getElementById('c-regle');
+  for (const [id, x] of Object.entries(GapSimu.REGLES)) { const o = document.createElement('option'); o.value = id; o.textContent = x.nom; r.append(o); }
+  r.addEventListener('change', () => { ST.regle = r.value; dash.redraw('simu'); });
+  document.getElementById('c-reset').addEventListener('click', () => { Object.assign(ST, JSON.parse(JSON.stringify(DEF))); majCurseurs(); dash.redraw('simu'); });
+  majCurseurs();
+})();
+function majCurseurs() {
+  const actifs = GapSimu.PILIERS.filter((k) => k !== 'valo' || valoDispo());
+  const tot = actifs.reduce((a, k) => a + ST.poids[k], 0);
+  for (const k of GapSimu.PILIERS) {
+    const inp = document.getElementById('c-' + k), out = document.getElementById('o-' + k), on = actifs.includes(k);
+    inp.value = ST.poids[k]; inp.disabled = !on; inp.style.setProperty('--rempli', (on ? ST.poids[k] / 50 * 100 : 0) + '%');
+    document.getElementById('w-' + k).classList.toggle('off', !on);
+    out.textContent = !on ? 'non disponible' : tot ? `${ST.poids[k]} → ${Math.round(100 * ST.poids[k] / tot)} % du score` : '0';
+  }
+  document.getElementById('c-tendance').value = ST.tendance; document.getElementById('c-tendance').style.setProperty('--rempli', ST.tendance + '%');
+  document.getElementById('o-tendance').textContent = ST.tendance + ' %';
+  document.getElementById('c-regle').value = ST.regle;
+}
+dash.draw('simu', (el) => {
+  const d = dash.data('simulation');
+  if (d.status === 'error') { el.textContent = 'Échec du chargement'; return; }
+  if (d.status !== 'ok') { el.textContent = 'Chargement…'; return; }
+  majCurseurs();
+  const nom = choix(), col = dash.couleur();
+  const rows = d.data.filter((r) => r.indice_nom === nom);
+  const poids = Object.assign({}, ST.poids); if (!valoDispo()) poids.valo = 0;
+  el.replaceChildren();
+  if (!Object.values(poids).some((v) => v > 0)) { el.textContent = 'Donnez un poids à au moins un pilier.'; return; }
+  const o = GapSimu.simuler(rows, poids, ST.tendance / 100, ST.regle);
+  const S = o.strategie, B = o.achat;
+  // phrase : note actuelle avec ces réglages
+  const ph = document.createElement('p'); ph.style.margin = '0 0 var(--cds-gap-md)';
+  ph.innerHTML = `Avec ces réglages, le baromètre du ${nom} serait à <b>${o.actuel.note}/5</b> en ${moisFr(o.actuel.mois)} (indice ${fmt(o.actuel.indice)}/100). `
+    + `De ${moisFr(o.debut)} à ${moisFr(o.fin)}, 100${DEV()} gérés avec cette règle seraient devenus <b>${eurFr(S.final)}</b>, contre ${eurFr(B.final)} en restant toujours investi.`;
+  el.append(ph);
+  // tableau de résultats
+  const lignes = [['100' + DEV() + ' deviennent', eurFr(S.final), eurFr(B.final), S.final > B.final],
+    ['Rendement annuel moyen', pctFr(S.tcam), pctFr(B.tcam), S.tcam > B.tcam],
+    ['Pire baisse (du plus haut au plus bas)', pctFr(S.perteMax, 0), pctFr(B.perteMax, 0), S.perteMax > B.perteMax],
+    ['Volatilité annuelle', pctFr(S.vol), pctFr(B.vol), S.vol < B.vol],
+    ['Part du temps investi en actions', pctFr(S.expo, 0), '100 %', null]];
+  const tb = document.createElement('table'); tb.className = 'res';
+  tb.innerHTML = `<thead><tr><th></th><th>Gestion GAP</th><th>Toujours investi</th></tr></thead>`;
+  const body = document.createElement('tbody');
+  for (const [lib, a, b, mieux] of lignes) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${lib}</td><td class="${mieux === true ? 'mieux' : ''}">${a}</td><td class="${mieux === false ? 'mieux' : ''}">${b}</td>`;
+    body.append(tr);
+  }
+  tb.append(body); el.append(tb);
+  // graphique : valeur de 100 €, échelle logarithmique
+  const lg = document.createElement('div'); lg.className = 'legend';
+  lg.innerHTML = `<span><i style="background:${col}"></i>Gestion GAP</span><span><i style="background:var(--color-fg-muted)"></i>Toujours investi</span><span><i style="background:var(--zone-prudence);height:10px"></i>Hors du marché (plus foncé = moins investi)</span>`;
+  el.append(lg);
+  const box = document.createElement('div'); box.className = 'chartbox'; box.style.position = 'relative'; el.append(box);
+  const ser = o.serie.map((r) => ({...r, date: new Date(r.mois + '-01T00:00:00Z')}));
+  const W = box.clientWidth || 600, H = 280, m = {t: 10, r: 96, b: 26, l: 46};
+  const x = d3.scaleUtc().domain(d3.extent(ser, (r) => r.date)).range([m.l, W - m.r]);
+  const y = d3.scaleLog().domain([d3.min(ser, (r) => Math.min(r.strategie, r.achat)) * 0.95, d3.max(ser, (r) => Math.max(r.strategie, r.achat)) * 1.05]).range([H - m.b, m.t]);
+  const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`)
+    .attr('role', 'img').attr('aria-label', `Valeur de 100${DEV()} : gestion GAP ${eurFr(S.final)}, toujours investi ${eurFr(B.final)}`);
+  const pas = (x(ser[1].date) - x(ser[0].date));
+  svg.append('g').selectAll('rect').data(ser.filter((r) => r.expo < 1)).join('rect')
+    .attr('x', (r) => x(r.date) - pas).attr('width', pas + 0.5).attr('y', m.t).attr('height', H - m.b - m.t)
+    .style('fill', 'var(--zone-prudence)').style('opacity', (r) => 1 - r.expo);
+  svg.append('g').attr('class', 'axis').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(Math.max(2, Math.floor(W / 90))).tickFormat(d3.utcFormat('%Y')));
+  const ticks = [50, 100, 200, 300, 500, 1000, 2000].filter((v) => v >= y.domain()[0] && v <= y.domain()[1]);
+  svg.append('g').attr('class', 'axis').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).tickValues(ticks).tickFormat((v) => v + DEV()));
+  svg.append('g').selectAll('line').data(ticks).join('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y).attr('y2', y)
+    .style('stroke', (v) => v === 100 ? 'var(--cds-chart-reference)' : 'var(--cds-chart-grid)').style('stroke-dasharray', '3 3');
+  const ln = (k) => d3.line().x((r) => x(r.date)).y((r) => y(r[k]));
+  svg.append('path').datum(ser).attr('d', ln('achat')).style('fill', 'none').style('stroke', 'var(--color-fg-muted)').style('stroke-width', 1.5).style('stroke-dasharray', '4 3');
+  svg.append('path').datum(ser).attr('d', ln('strategie')).style('fill', 'none').style('stroke', col).style('stroke-width', 2);
+  const fin = ser[ser.length - 1];
+  const labs = [{v: fin.strategie, t: 'GAP ' + eurFr(fin.strategie), c: col}, {v: fin.achat, t: 'Investi ' + eurFr(fin.achat), c: 'var(--color-fg-muted)'}]
+    .map((l) => ({...l, y: y(l.v)})).sort((a, b) => a.y - b.y);
+  if (labs[1].y - labs[0].y < 15) labs[1].y = labs[0].y + 15;
+  for (const l of labs) {
+    svg.append('circle').attr('cx', x(fin.date)).attr('cy', y(l.v)).attr('r', 4).style('fill', l.c).style('stroke', 'var(--color-panel)').style('stroke-width', 2);
+    svg.append('text').attr('x', W - m.r + 10).attr('y', l.y).attr('dy', '0.32em').style('fill', 'var(--color-fg)').style('font-size', '12px').text(l.t);
+  }
+  const cross = svg.append('line').attr('y1', m.t).attr('y2', H - m.b).style('stroke', 'var(--cds-chart-axis)').style('display', 'none');
+  const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; box.append(tip);
+  const bis = d3.bisector((r) => r.date).center;
+  svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', W - m.r - m.l).attr('height', H - m.b - m.t).style('fill', 'transparent')
+    .on('pointermove', (ev) => {
+      const [px] = d3.pointer(ev, svg.node()); const r = ser[bis(ser, x.invert(px))]; if (!r) return;
+      cross.style('display', null).attr('x1', x(r.date)).attr('x2', x(r.date));
+      tip.innerHTML = `<div style="font-weight:600">${moisFr(r.mois)}</div><div>Gestion GAP : ${eurFr(r.strategie)}</div><div>Toujours investi : ${eurFr(r.achat)}</div><div class="muted">Note du mois précédent ${r.note}/5 · investi à ${Math.round(r.expo * 100)} %</div>`;
+      tip.hidden = false;
+      const sr = svg.node().getBoundingClientRect(), br = box.getBoundingClientRect();
+      const left = sr.left - br.left + (x(r.date) / W) * sr.width;
+      tip.style.left = Math.min(Math.max(0, left + 12), box.clientWidth - tip.offsetWidth) + 'px'; tip.style.top = '8px';
+    })
+    .on('pointerleave', () => { tip.hidden = true; cross.style('display', 'none'); });
+  const n = document.createElement('p'); n.className = 'muted'; n.style.cssText = 'margin:var(--cds-gap-sm) 0 0;font-size:var(--cds-font-size-caption)';
+  n.textContent = `Chaque fin de mois, la note décide de la part investie le mois suivant ; le reste est placé au taux sans risque (${nom === 'CAC 40' ? 'taux de la BCE' : 'bons du Trésor US à 3 mois'}). Dividendes réinvestis, ${nom === 'CAC 40' ? 'en euros' : 'en dollars'}, hors frais et impôts. Échelle logarithmique. Des poids réglés pour coller au passé ne garantissent pas les résultats futurs.`;
+  el.append(n);
 });
 </script>
 <script>
