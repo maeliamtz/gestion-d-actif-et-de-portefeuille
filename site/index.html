@@ -147,12 +147,6 @@ body { margin: 0; background: var(--fond), var(--color-bg); background-repeat: n
     <p class="maj">Mise à jour automatique chaque mois. Dernière mise à jour : <span data-draw="majdate">—</span> · données jusqu'à <span data-draw="majmois">—</span></p>
   </header>
 
-  <section id="monde" class="card">
-    <h2>Où en est le monde</h2>
-    <p class="synth" data-draw="synthese" data-source="synthese">—</p>
-    <div data-draw="actu" data-source="actualite"></div>
-  </section>
-
   <section id="synthese" class="hero">
     <div class="card" id="carte-indice">
       <div class="muted">Baromètre · <span data-draw="nom">—</span></div>
@@ -187,6 +181,12 @@ body { margin: 0; background: var(--fond), var(--color-bg); background-repeat: n
   <section id="changements" class="card">
     <h2>Ce qui a changé en 3 mois</h2>
     <ul class="changes" data-draw="changes" data-source="piliers"></ul>
+  </section>
+
+  <section id="monde" class="card">
+    <h2>Où en est le monde</h2>
+    <p class="synth" data-draw="synthese" data-source="synthese">—</p>
+    <div data-draw="actu" data-source="actualite"></div>
   </section>
 
   <section id="historique">
