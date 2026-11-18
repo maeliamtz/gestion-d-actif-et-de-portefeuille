@@ -14,12 +14,12 @@
   --cds-chart-grid: #ece7f6; --cds-chart-axis: #cfc6e6; --cds-chart-reference: #9a8fbf; --cds-chart-status-critical: #e8869c; --cds-text-secondary: #6e6884;
   --cds-surface-popover: #ffffff; --cds-border: #ddd4f2; --cds-shadow-popover: 0 4px 16px rgba(122,96,190,.16); --serie: #9a78dc; --s1: #6cbbe8; --s2: #f08cb6; --s3: #9a78dc;
   --titre: #6b55b8; --t-bleu: #eef7fd; --t-rose: #fdf0f6; --t-violet: #f4f0fc; --b-bleu: #cfe8f7; --b-rose: #f8d3e4; --b-violet: #e0d6f6;
-  --zone-prudence: #ebe8ef; --top-bad: #f0a3b4; --top-warn: #f6d08f; --top-ok: #a8dcc0; --fond: linear-gradient(180deg, #eaf5fc 0, #fcf0f6 380px, #f7f5fc 820px); }
+  --n1: #f08cb6; --n2: #f6bcd6; --n3: #ddd3f4; --n4: #b3dbf3; --n5: #6cbbe8; --zone-prudence: #ebe8ef; --top-bad: #f0a3b4; --top-warn: #f6d08f; --top-ok: #a8dcc0; --fond: linear-gradient(180deg, #eaf5fc 0, #fcf0f6 380px, #f7f5fc 820px); }
 @media (prefers-color-scheme: dark) { :root { --color-fg: #ece9f5; --color-fg-muted: #aaa3c0; --color-bg: #1d1a26; --color-panel: #262233;
   --color-border-line: #3a3450; --color-ok: #6fcf98; --color-warn: #e8b660; --color-bad: #f08a9e; --cds-chart-grid: #3a3450; --cds-chart-axis: #564e70;
   --cds-chart-reference: #8f86b0; --cds-text-secondary: #aaa3c0; --cds-surface-popover: #2e2a3d; --cds-border: #4a4366; --serie: #b39bf0; --s1: #6cbbe8; --s2: #f08cb6; --s3: #9a78dc;
   --titre: #c3b2f5; --t-bleu: #1f2a38; --t-rose: #33212c; --t-violet: #2a2440; --b-bleu: #2f4a60; --b-rose: #5a3348; --b-violet: #4a3f70;
-  --zone-prudence: #332f3d; --top-bad: #b85a70; --top-warn: #b8904a; --top-ok: #4f9a72; --fond: linear-gradient(180deg, #1c2330 0, #261c26 380px, #1d1a26 820px); } }
+  --n1: #d9709e; --n2: #8f5a76; --n3: #5c5285; --n4: #3f6f8f; --n5: #5aaee0; --zone-prudence: #332f3d; --top-bad: #b85a70; --top-warn: #b8904a; --top-ok: #4f9a72; --fond: linear-gradient(180deg, #1c2330 0, #261c26 380px, #1d1a26 820px); } }
 body { margin: 0; background: var(--fond), var(--color-bg); background-repeat: no-repeat; background-color: var(--color-bg); color: var(--color-fg); font-family: var(--font-anthropic-sans); font-size: var(--cds-font-size-body); }
 #dash-root { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
 .dash-select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--b-violet); background-color: var(--color-panel); color: var(--color-fg); }
@@ -122,6 +122,13 @@ body { margin: 0; background: var(--fond), var(--color-bg); background-repeat: n
 .gap th, .gap td { border-bottom-color: var(--b-violet); }
 .gap .seg button { border-color: var(--b-violet); }
 .gap .seg button[aria-pressed=true] { background: var(--t-violet); border-color: var(--s3); color: var(--titre); }
+.gap .baro { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: var(--cds-gap-lg); align-items: center; }
+@media (max-width: 560px) { .gap .baro { grid-template-columns: 1fr; } }
+.gap .baro svg { width: 100%; height: auto; display: block; }
+.gap .note-chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); color: var(--color-fg); }
+.gap .echelle { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.gap .echelle span { display: flex; align-items: center; gap: 8px; font-size: var(--cds-font-size-caption); }
+.gap .echelle i { width: 22px; height: 12px; border-radius: 4px; flex: none; }
 .gap details summary { cursor: pointer; color: var(--titre); font-weight: var(--cds-font-weight-medium); }
 </style>
 
@@ -136,7 +143,7 @@ body { margin: 0; background: var(--fond), var(--color-bg); background-repeat: n
         <option value="MSCI World">MSCI World</option>
       </select>
     </div>
-    <p class="lead">Indice GAP du <span data-draw="nom">—</span> en <span data-draw="mois" data-source="derniere" data-field="mois">—</span> : <b data-draw="indice" data-source="derniere" data-field="indice">—</b> sur 100, soit le <span data-draw="pct" data-source="derniere" data-field="percentile">—</span>e percentile de ses 10 dernières années, en zone <b data-draw="zone" data-source="derniere" data-field="zone">—</b>. Un contexte sur 3 à 12 mois, pas un conseil d'achat ou de vente.</p>
+    <p class="lead">Indice GAP du <span data-draw="nom">—</span> en <span data-draw="mois" data-source="derniere" data-field="mois">—</span> : <b data-draw="indice" data-source="derniere" data-field="indice">—</b> sur 100, soit le <span data-draw="pct" data-source="derniere" data-field="percentile">—</span>e percentile de ses 10 dernières années : note <b data-draw="note" data-source="derniere" data-field="note">—</b>. Un contexte sur 3 à 12 mois, pas un conseil d'achat ou de vente.</p>
     <p class="maj">Mise à jour automatique chaque mois. Dernière mise à jour : <span data-draw="majdate">—</span> · données jusqu'à <span data-draw="majmois">—</span></p>
   </header>
 
@@ -148,14 +155,26 @@ body { margin: 0; background: var(--fond), var(--color-bg); background-repeat: n
 
   <section id="synthese" class="hero">
     <div class="card" id="carte-indice">
-      <div class="muted">Indice GAP · <span data-draw="nom">—</span></div>
-      <div class="big" data-draw="indice" data-source="derniere" data-field="indice">—</div>
-      <div style="margin-top:8px"><span class="badge" data-draw="zonebadge" data-source="derniere" data-field="zone">—</span></div>
-      <div class="muted" style="margin-top:8px"><span data-draw="var3m" data-source="derniere" data-field="variation_3m">—</span> pt sur 3 mois (contre <span data-draw="ind3m" data-source="derniere" data-field="indice_3m">—</span>)</div>
+      <div class="muted">Baromètre · <span data-draw="nom">—</span></div>
+      <div class="baro">
+        <div data-draw="gauge" data-source="derniere"></div>
+        <div>
+          <div class="big"><span data-draw="notenum" data-source="derniere" data-field="note">—</span><span style="font-size:1.4rem;color:var(--color-fg-muted)">/5</span></div>
+          <div style="margin-top:6px"><span class="note-chip" data-draw="notechip" data-source="derniere" data-field="appreciation">—</span></div>
+          <div class="muted" style="margin-top:8px">Indice <span data-draw="indice" data-source="derniere" data-field="indice">—</span>/100 · <span data-draw="var3m" data-source="derniere" data-field="variation_3m">—</span> pt sur 3 mois (contre <span data-draw="ind3m" data-source="derniere" data-field="indice_3m">—</span>)</div>
+        </div>
+      </div>
     </div>
     <div class="card" id="carte-lecture">
       <div class="muted">Comment lire l'indice</div>
-      <p style="margin:6px 0 0">0 à 100. La zone se lit par rapport à l'historique de l'indice : <span class="z-prudence">prudence</span> sous le 20e percentile, <span class="z-favorable">favorable</span> au-dessus du 80e, <span class="z-neutre">neutre</span> entre les deux. L'indice mélange le niveau des piliers et leur tendance sur 3 mois.</p>
+      <p style="margin:6px 0 0">L'indice (0 à 100) est comparé à ses 10 dernières années, puis noté de 1 à 5 selon la tranche de 20 % où il se trouve. Il mélange le niveau des piliers et leur tendance sur 3 mois.</p>
+      <div class="echelle">
+        <span><i style="background:var(--n5)"></i>5 · très favorable : parmi les 20 % les plus hauts</span>
+        <span><i style="background:var(--n4)"></i>4 · favorable</span>
+        <span><i style="background:var(--n3)"></i>3 · neutre</span>
+        <span><i style="background:var(--n2)"></i>2 · défavorable</span>
+        <span><i style="background:var(--n1)"></i>1 · très défavorable : parmi les 20 % les plus bas</span>
+      </div>
     </div>
   </section>
 
@@ -172,7 +191,7 @@ body { margin: 0; background: var(--fond), var(--color-bg); background-repeat: n
 
   <section id="historique">
     <h2>Historique de l'indice — <span data-draw="nom">—</span></h2>
-    <p class="muted" style="margin:0 0 var(--cds-gap-sm)">Bandes grisées : mois en zone prudence. Survolez la courbe pour le détail.</p>
+    <p class="muted" style="margin:0 0 var(--cds-gap-sm)">Bandes grisées : mois notés 1/5 (très défavorable). Survolez la courbe pour le détail.</p>
     <div class="chartbox card" id="chart-historique" data-draw="chart" data-source="historique"></div>
   </section>
 
@@ -222,7 +241,7 @@ dash.calc('derniere', {
       const rows = historique.filter((r) => r.indice_nom === nom && r.indice != null);
       if (rows.length < 4) continue;
       const last = rows[rows.length - 1], prev = rows[rows.length - 4];
-      out.push({indice_nom: nom, mois: last.mois, indice: +(+last.indice).toFixed(1), percentile: Math.round(+last.percentile), zone: last.zone,
+      out.push({indice_nom: nom, mois: last.mois, indice: +(+last.indice).toFixed(1), percentile: Math.round(+last.percentile), note: last.note, appreciation: last.appreciation,
                 indice_3m: +(+prev.indice).toFixed(1), variation_3m: +(last.indice - prev.indice).toFixed(1)});
     }
     return out;
@@ -247,8 +266,38 @@ dash.draw('nom', (el) => { el.textContent = choix(); });
 dash.draw('mois', (el) => one(el, (e, r) => e.textContent = moisFr(r.mois)));
 dash.draw('indice', (el) => one(el, (e, r) => e.textContent = fmt(r.indice)));
 dash.draw('pct', (el) => one(el, (e, r) => e.textContent = r.percentile));
-dash.draw('zone', (el) => one(el, (e, r) => { e.textContent = r.zone; e.className = 'z-' + r.zone; }));
-dash.draw('zonebadge', (el) => one(el, (e, r) => { e.textContent = r.zone; e.className = 'badge z-' + r.zone; }));
+dash.draw('note', (el) => one(el, (e, r) => { e.textContent = r.note + '/5 (' + r.appreciation + ')'; }));
+dash.draw('notenum', (el) => one(el, (e, r) => { e.textContent = r.note; }));
+dash.draw('notechip', (el) => one(el, (e, r) => { e.textContent = r.appreciation; e.style.background = 'var(--n' + r.note + ')'; }));
+dash.draw('gauge', (el) => one(el, (e, r) => {
+  // Baromètre : demi-cercle en 5 secteurs, aiguille placée au percentile exact
+  const W = 260, H = 150, cx = 130, cy = 132, R = 112, r0 = 74, NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', `Baromètre : note ${r.note} sur 5, ${r.appreciation}`);
+  const pt = (a, rr) => [cx - rr * Math.cos(a), cy - rr * Math.sin(a)];
+  const gap = 0.025;
+  for (let i = 0; i < 5; i++) {
+    const a0 = i * Math.PI / 5 + gap, a1 = (i + 1) * Math.PI / 5 - gap;
+    const [x0, y0] = pt(a0, R), [x1, y1] = pt(a1, R), [x2, y2] = pt(a1, r0), [x3, y3] = pt(a0, r0);
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', `M${x0},${y0} A${R},${R} 0 0 1 ${x1},${y1} L${x2},${y2} A${r0},${r0} 0 0 0 ${x3},${y3} Z`);
+    path.setAttribute('fill', `var(--n${i + 1})`); path.style.opacity = (i + 1 === r.note) ? 1 : 0.55;
+    svg.append(path);
+    const [tx, ty] = pt((i + 0.5) * Math.PI / 5, (R + r0) / 2);
+    const t = document.createElementNS(NS, 'text'); t.setAttribute('x', tx); t.setAttribute('y', ty); t.setAttribute('dy', '0.35em');
+    t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', '13'); t.setAttribute('font-weight', i + 1 === r.note ? '700' : '400');
+    t.setAttribute('fill', 'var(--color-fg)'); t.textContent = i + 1; svg.append(t);
+  }
+  const ang = Math.PI * Math.min(0.99, Math.max(0.01, (r.percentile ?? 50) / 100));
+  const [nx, ny] = pt(ang, r0 - 8);
+  const needle = document.createElementNS(NS, 'line');
+  needle.setAttribute('x1', cx); needle.setAttribute('y1', cy); needle.setAttribute('x2', nx); needle.setAttribute('y2', ny);
+  needle.setAttribute('stroke', 'var(--titre)'); needle.setAttribute('stroke-width', '3'); needle.setAttribute('stroke-linecap', 'round');
+  const hub = document.createElementNS(NS, 'circle'); hub.setAttribute('cx', cx); hub.setAttribute('cy', cy); hub.setAttribute('r', 7);
+  hub.setAttribute('fill', 'var(--titre)'); hub.setAttribute('stroke', 'var(--color-panel)'); hub.setAttribute('stroke-width', '2');
+  svg.append(needle, hub);
+  e.replaceChildren(svg);
+}));
 dash.draw('var3m', (el) => one(el, (e, r) => { e.textContent = (r.variation_3m > 0 ? '+' : '') + fmt(r.variation_3m); }));
 dash.draw('ind3m', (el) => one(el, (e, r) => e.textContent = fmt(r.indice_3m)));
 dash.draw('synthese', (el) => {
@@ -368,10 +417,10 @@ dash.draw('chart', (el) => {
   const x = d3.scaleUtc().domain(d3.extent(rows, (r) => r.date)).range([m.l, W - m.r]);
   const y = d3.scaleLinear().domain([0, 100]).range([H - m.b, m.t]);
   const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`)
-    .attr('role', 'img').attr('aria-label', 'Indice GAP du ' + nom + ' par mois depuis 1996, entre 0 et 100, avec les mois en zone prudence surlignés');
+    .attr('role', 'img').attr('aria-label', 'Indice GAP du ' + nom + ' par mois depuis 1996, entre 0 et 100, avec les mois notés 1 sur 5 surlignés');
   if (!rows.length) return;
   const step = x(new Date(Date.UTC(2001, 1, 1))) - x(new Date(Date.UTC(2001, 0, 1)));
-  svg.append('g').selectAll('rect').data(rows.filter((r) => r.zone === 'prudence')).join('rect')
+  svg.append('g').selectAll('rect').data(rows.filter((r) => r.note === 1)).join('rect')
     .attr('x', (r) => x(r.date)).attr('width', Math.max(1, step)).attr('y', m.t).attr('height', H - m.b - m.t)
     .style('fill', 'var(--zone-prudence)');
   svg.append('g').selectAll('line').data([35, 50, 65]).join('line')
@@ -391,7 +440,7 @@ dash.draw('chart', (el) => {
     if (!r) return;
     dot.style('display', null).attr('cx', x(r.date)).attr('cy', y(r.indice));
     tip.hidden = false;
-    tip.textContent = `${r.mois} · indice ${window.gapFmt(r.indice)} · ${r.percentile == null ? '' : Math.round(r.percentile) + 'e pct · '}${r.zone ?? ''} · ${nom} ${window.gapFmt(r.prix, 0)}`;
+    tip.textContent = `${r.mois} · indice ${window.gapFmt(r.indice)} · ${r.note == null ? '' : 'note ' + r.note + '/5 · '}${nom} ${window.gapFmt(r.prix, 0)}`;
     const sr = svg.node().getBoundingClientRect(), er = el.getBoundingClientRect();
     const bw = el.clientWidth, left = sr.left - er.left + (x(r.date) / W) * sr.width;
     tip.style.left = Math.min(Math.max(0, left - tip.offsetWidth / 2), bw - tip.offsetWidth) + 'px';
@@ -454,7 +503,7 @@ dash.draw('compare', (el) => {
         dots[i].style('display', r ? null : 'none'); if (r) dots[i].attr('cx', x(r.date)).attr('cy', y(r.indice));
         const row = document.createElement('div');
         const sw = document.createElement('i'); sw.style.cssText = `display:inline-block;width:10px;height:2px;margin-right:6px;vertical-align:middle;background:${s.col}`;
-        row.append(sw, document.createTextNode(`${s.nom} : ${r ? window.gapFmt(r.indice) + ' (' + r.zone + ')' : '—'}`));
+        row.append(sw, document.createTextNode(`${s.nom} : ${r ? window.gapFmt(r.indice) + ' · note ' + r.note + '/5' : '—'}`));
         tip.append(row);
       });
       tip.hidden = false;

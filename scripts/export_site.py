@@ -23,7 +23,9 @@ def clean(v):
 def dump(name, rows):
     rows = [{k: clean(v) for k, v in r.items()} for r in rows]
     json.dump({"rows": rows, "meta": META}, open(f"{OUT}/{name}.json", "w"), ensure_ascii=False); print(name, len(rows))
-zname = lambda p: None if not np.isfinite(p) else ("prudence" if p <= .2 else "favorable" if p > .8 else "neutre")
+# Note de 1 à 5 : quintile de l'indice dans ses 10 dernières années (1 = 20 % les plus bas, 5 = 20 % les plus hauts)
+APPREC = {1: "très défavorable", 2: "défavorable", 3: "neutre", 4: "favorable", 5: "très favorable"}
+note5 = lambda p: None if not np.isfinite(p) else min(5, int(p * 5) + 1)
 
 # séries par indice : (indice D, percentile, prix, piliers)
 pct_sp = us.pct_rank(us.idx_v2c)
@@ -39,7 +41,8 @@ for nom, s in SER.items():
     for d in s["D"].loc["1996-01-01":LAST].dropna().index:
         p = s["pct"][d]
         h.append({"indice_nom": nom, "mois": d.strftime("%Y-%m"), "indice": s["D"][d],
-                  "percentile": p * 100 if np.isfinite(p) else None, "zone": zname(p), "prix": s["prix"][d]})
+                  "percentile": p * 100 if np.isfinite(p) else None, "note": note5(p),
+                  "appreciation": APPREC.get(note5(p)), "prix": s["prix"][d]})
 dump("historique", h)
 
 # 2. piliers
@@ -143,7 +146,7 @@ fr1 = lambda v: f"{v:.1f}".replace(".", ",")
 nb = lambda v, d=2: f"{math.copysign(math.floor(abs(round(float(v), 4)) * 10**d + 0.5), v) / 10**d:+.{d}f}".replace(".", ",").replace("-", "−")
 syn, act_rows = [], []
 for nom, s in SER.items():
-    D_ = s["D"].dropna(); v, v3 = D_[LAST], D_[PREV]; zone = zname(s["pct"][LAST])
+    D_ = s["D"].dropna(); v, v3 = D_[LAST], D_[PREV]; n5 = note5(s["pct"][LAST])
     pil = [r for r in rows_piliers if r["indice_nom"] == nom]
     dans = [r for r in pil if r["dans_le_score"] == "oui" and r["score"] is not None and np.isfinite(r["score"])]
     fort, faible = max(dans, key=lambda r: r["score"]), min(dans, key=lambda r: r["score"])
@@ -151,7 +154,7 @@ for nom, s in SER.items():
     dv = v - v3
     sens = f"en hausse de {fr1(dv)}" if dv > 0.5 else f"en baisse de {fr1(-dv)}" if dv < -0.5 else "quasi stable"
     pts = "" if abs(dv) <= 0.5 else (" point" if abs(dv) < 2 else " points")
-    t = f"En {MOISFR[LAST.month - 1]} {LAST.year}, le contexte est {zone} pour le {nom} ({fr1(v)}/100, {sens}{pts} sur 3 mois). "
+    t = f"En {MOISFR[LAST.month - 1]} {LAST.year}, le baromètre du {nom} est à {n5}/5, un contexte {APPREC[n5]} (indice {fr1(v)}/100, {sens}{pts} sur 3 mois). "
     t += f"Principal soutien : {LIBP[fort['pilier']]} ({nb(fort['score'])}). Principal frein : {LIBP[faible['pilier']]} ({nb(faible['score'])}). "
     if bouge:
         b = max(bouge, key=lambda r: abs(r["variation_3m"]))
