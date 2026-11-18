@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Appli GAP — Météo des marchés</title>
+<title>Baromètre du monde</title>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <style>
 :root { --font-anthropic-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --font-anthropic-serif: Georgia, "Times New Roman", serif;
@@ -12,10 +12,10 @@
   --cds-font-size-caption: 13px; --cds-font-size-body: 15px; --cds-font-size-heading: 18px; --cds-font-size-title: 30px; --cds-font-weight-medium: 600;
   --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 12px; --cds-gap-lg: 16px; --cds-gap-xl: 28px; --cds-pad-lg: 16px; --cds-radius: 10px;
   --cds-chart-grid: #e5e3dc; --cds-chart-axis: #c9c6bc; --cds-chart-reference: #8a877d; --cds-chart-status-critical: #c0392b; --cds-text-secondary: #6b6a66;
-  --cds-surface-popover: #ffffff; --cds-border: #d9d6cc; --cds-shadow-popover: 0 4px 16px rgba(0,0,0,.12); --serie: #2f5fb3; }
+  --cds-surface-popover: #ffffff; --cds-border: #d9d6cc; --cds-shadow-popover: 0 4px 16px rgba(0,0,0,.12); --serie: #2f5fb3; --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; }
 @media (prefers-color-scheme: dark) { :root { --color-fg: #ecebe6; --color-fg-muted: #a3a19a; --color-bg: #1c1c1a; --color-panel: #262624;
   --color-border-line: #3a3936; --color-ok: #5cb87f; --color-warn: #e0a84a; --color-bad: #e36b5d; --cds-chart-grid: #3a3936; --cds-chart-axis: #55534e;
-  --cds-chart-reference: #8a877d; --cds-text-secondary: #a3a19a; --cds-surface-popover: #2f2f2c; --cds-border: #4a4945; --serie: #7aa2e8; } }
+  --cds-chart-reference: #8a877d; --cds-text-secondary: #a3a19a; --cds-surface-popover: #2f2f2c; --cds-border: #4a4945; --serie: #7aa2e8; --s1: #3987e5; --s2: #d95926; --s3: #199e70; } }
 body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-family: var(--font-anthropic-sans); font-size: var(--cds-font-size-body); }
 #dash-root { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
 .dash-select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--color-border-line); background-color: var(--color-panel); color: var(--color-fg); }
@@ -65,7 +65,8 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
 .gap { font-family: var(--font-anthropic-sans); color: var(--color-fg); display: flex; flex-direction: column; gap: var(--cds-gap-xl); }
 .gap h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; }
 .gap h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0 0 var(--cds-gap-sm); }
-.gap .lead { margin: var(--cds-gap-xs) 0 0; color: var(--color-fg-muted); max-width: 60em; }
+.gap .lead { margin: var(--cds-gap-xs) 0 0; color: var(--color-fg-muted); }
+.gap p { text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
 .gap .muted { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
 .gap .card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); }
 .gap .hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--cds-gap-lg); }
@@ -89,7 +90,12 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
 .gap th { font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
 .gap td.num, .gap th.num { text-align: right; }
 .gap ul.changes { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
-.gap .synth { margin: 0; line-height: 1.55; max-width: 62em; }
+.gap .synth { margin: 0; line-height: 1.55; }
+.gap .legend { display: flex; gap: var(--cds-gap-lg); flex-wrap: wrap; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-bottom: var(--cds-gap-sm); }
+.gap .legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 6px; border-radius: 1px; }
+.gap .seg { display: inline-flex; gap: 4px; }
+.gap .seg button { font: inherit; font-size: var(--cds-font-size-caption); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--color-border-line); background: var(--color-panel); color: var(--color-fg-muted); cursor: pointer; }
+.gap .seg button[aria-pressed=true] { color: var(--color-fg); border-color: var(--color-fg-muted); font-weight: var(--cds-font-weight-medium); }
 .gap ul.actu { margin: var(--cds-gap-md) 0 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
 .gap ul.actu a { color: var(--color-fg); }
 .gap [data-dash-source-state=refreshing] { opacity: .5; }
@@ -97,7 +103,7 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
 
 <div class="gap">
   <header id="titre">
-    <h1>Météo des marchés</h1>
+    <h1>Baromètre du monde</h1>
     <div style="display:flex;gap:var(--cds-gap-sm);align-items:center;flex-wrap:wrap;margin-top:var(--cds-gap-sm)">
       <label class="muted" for="choix-indice">Indice</label>
       <select class="dash-select" id="choix-indice" aria-label="Indice affiché">
@@ -144,6 +150,18 @@ body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-fami
     <h2>Historique de l'indice — <span data-draw="nom">—</span></h2>
     <p class="muted" style="margin:0 0 var(--cds-gap-sm)">Zones rouges : mois en zone prudence. Survolez la courbe pour le détail.</p>
     <div class="chartbox card" id="chart-historique" data-draw="chart" data-source="historique"></div>
+  </section>
+
+  <section id="comparaison">
+    <h2>Comparaison des trois indices</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--cds-gap-md);flex-wrap:wrap;margin-bottom:var(--cds-gap-sm)">
+      <p class="muted" style="margin:0">Indice GAP de 0 à 100 pour chaque indice boursier. Survolez pour comparer un mois donné.</p>
+      <div class="seg" id="periode" role="group" aria-label="Période affichée">
+        <button type="button" data-ans="5">5 ans</button><button type="button" data-ans="10" aria-pressed="true">10 ans</button><button type="button" data-ans="0">Tout</button>
+      </div>
+    </div>
+    <div class="legend"><span><i style="background:var(--s1)"></i>S&amp;P 500</span><span><i style="background:var(--s2)"></i>CAC 40</span><span><i style="background:var(--s3)"></i>MSCI World</span></div>
+    <div class="chartbox card" id="chart-comparaison" data-draw="compare" data-source="historique"></div>
   </section>
 
   <section id="indicateurs">
@@ -356,6 +374,72 @@ dash.draw('chart', (el) => {
     tip.style.top = '4px';
   };
   svg.on('pointermove', move).on('pointerleave', () => { tip.hidden = true; dot.style('display', 'none'); });
+});
+</script>
+<script>
+const NOMS3 = [['S&P 500', 'var(--s1)'], ['CAC 40', 'var(--s2)'], ['MSCI World', 'var(--s3)']];
+document.querySelectorAll('#periode button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('#periode button').forEach((x) => x.setAttribute('aria-pressed', x === b));
+  dash.setParams({ans: +b.dataset.ans});
+}));
+dash.draw('compare', (el) => {
+  const d = dash.data('historique');
+  el.replaceChildren();
+  if (d.status === 'error') { el.textContent = 'Échec du chargement'; return; }
+  if (d.status !== 'ok') return;
+  const ans = dash.params().ans ?? 10;
+  const all = d.data.filter((r) => r.indice != null).map((r) => ({...r, date: new Date(r.mois + '-01T00:00:00Z'), indice: +r.indice}));
+  const fin = d3.max(all, (r) => r.date);
+  const debut = ans ? new Date(Date.UTC(fin.getUTCFullYear() - ans, fin.getUTCMonth(), 1)) : d3.min(all, (r) => r.date);
+  const series = NOMS3.map(([nom, col]) => ({nom, col, rows: all.filter((r) => r.indice_nom === nom && r.date >= debut)}));
+  const W = el.clientWidth - 2 * 16 || 600, H = 300;
+  const m = {t: 10, r: 112, b: 26, l: 34};
+  const x = d3.scaleUtc().domain([debut, fin]).range([m.l, W - m.r]);
+  const y = d3.scaleLinear().domain([0, 100]).range([H - m.b, m.t]);
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`)
+    .attr('role', 'img').attr('aria-label', 'Indice GAP du S&P 500, du CAC 40 et du MSCI World par mois, entre 0 et 100');
+  svg.append('g').selectAll('line').data([25, 50, 75]).join('line')
+    .attr('x1', m.l).attr('x2', W - m.r).attr('y1', y).attr('y2', y)
+    .style('stroke', (v) => v === 50 ? 'var(--cds-chart-reference)' : 'var(--cds-chart-grid)').style('stroke-dasharray', '3 3');
+  svg.append('g').attr('class', 'axis').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(Math.max(2, Math.floor(W / 90))).tickFormat(d3.utcFormat('%Y')));
+  svg.append('g').attr('class', 'axis').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).tickValues([0, 25, 50, 75, 100]));
+  const line = d3.line().x((r) => x(r.date)).y((r) => y(r.indice));
+  for (const s of series) svg.append('path').datum(s.rows).attr('d', line).style('fill', 'none').style('stroke', s.col).style('stroke-width', 2).style('stroke-linejoin', 'round');
+  // étiquettes directes en bout de courbe (décalées si elles se chevauchent)
+  const labs = series.filter((s) => s.rows.length).map((s) => ({s, last: s.rows[s.rows.length - 1], y: y(s.rows[s.rows.length - 1].indice)})).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labs.length; i++) if (labs[i].y - labs[i - 1].y < 15) labs[i].y = labs[i - 1].y + 15;
+  for (const l of labs) {
+    svg.append('circle').attr('cx', x(l.last.date)).attr('cy', y(l.last.indice)).attr('r', 4).style('fill', l.s.col).style('stroke', 'var(--color-panel)').style('stroke-width', 2);
+    svg.append('text').attr('x', W - m.r + 10).attr('y', l.y).attr('dy', '0.32em').style('fill', 'var(--color-fg)').style('font-size', '12px')
+      .text(`${l.s.nom} ${window.gapFmt(l.last.indice)}`);
+  }
+  const cross = svg.append('line').attr('y1', m.t).attr('y2', H - m.b).style('stroke', 'var(--cds-chart-axis)').style('display', 'none');
+  const dots = series.map((s) => svg.append('circle').attr('r', 4).style('fill', s.col).style('stroke', 'var(--color-panel)').style('stroke-width', 2).style('display', 'none'));
+  const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; el.append(tip);
+  const ref = series[0].rows.length ? series[0].rows : series.find((s) => s.rows.length).rows;
+  const bis = d3.bisector((r) => r.date).center;
+  svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', W - m.r - m.l).attr('height', H - m.b - m.t).style('fill', 'transparent')
+    .on('pointermove', (ev) => {
+      const [px] = d3.pointer(ev, svg.node());
+      const r0 = ref[bis(ref, x.invert(px))]; if (!r0) return;
+      cross.style('display', null).attr('x1', x(r0.date)).attr('x2', x(r0.date));
+      tip.replaceChildren();
+      const h = document.createElement('div'); h.style.fontWeight = '600'; h.textContent = r0.mois; tip.append(h);
+      series.forEach((s, i) => {
+        const r = s.rows.find((q) => q.mois === r0.mois);
+        dots[i].style('display', r ? null : 'none'); if (r) dots[i].attr('cx', x(r.date)).attr('cy', y(r.indice));
+        const row = document.createElement('div');
+        const sw = document.createElement('i'); sw.style.cssText = `display:inline-block;width:10px;height:2px;margin-right:6px;vertical-align:middle;background:${s.col}`;
+        row.append(sw, document.createTextNode(`${s.nom} : ${r ? window.gapFmt(r.indice) + ' (' + r.zone + ')' : '—'}`));
+        tip.append(row);
+      });
+      tip.hidden = false;
+      const sr = svg.node().getBoundingClientRect(), er = el.getBoundingClientRect();
+      const left = sr.left - er.left + (x(r0.date) / W) * sr.width;
+      tip.style.left = Math.min(Math.max(0, left + 12), el.clientWidth - tip.offsetWidth) + 'px';
+      tip.style.top = '8px';
+    })
+    .on('pointerleave', () => { tip.hidden = true; cross.style('display', 'none'); dots.forEach((dd) => dd.style('display', 'none')); });
 });
 </script>
 <script>
